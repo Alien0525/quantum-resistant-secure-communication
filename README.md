@@ -54,7 +54,7 @@ Client A                        Client B
 - **Testing:** pytest
 - **Performance:** timeit, memory_profiler
 
-## 📁 Project Structure
+## Project Structure
 quantum-resistant-secure-communication/
 ├── src/
 │   ├── kyber_scheme.py          # Kyber-based implementation
@@ -154,6 +154,21 @@ pytest tests/ -v
 - **Eavesdropping:** Post-quantum encryption
 - **Modification:** HMAC verification
 - **Replay:** Timestamp validation + nonce tracking
+
+## Live Data Visualization
+We have plotted the comparison metrics using Chart.js. 
+You can view the live interactive charts here: **[Link to your GitHub Pages URL]**
+
+## Live Socket Demo
+To test the live Client/Server architecture over localhost:
+
+1. Open Terminal 1 (Server):
+   ```bash
+   python3 demos/server.py
+2. Open Terminal 2 (Client):
+    ```bash
+    python3 demos/client.py
+3. Begin chatting securely via Kyber768 + AES-256-GCM!
 
 ## References
 

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PQC Performance Analysis</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; background-color: #f8f9fa; }
+        .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #333; }
+        .chart-container { position: relative; height: 400px; width: 100%; margin-bottom: 50px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Quantum-Resistant Schemes Comparison</h1>
+        
+        <h2>1. Size Comparison (Logarithmic Scale)</h2>
+        <div class="chart-container">
+            <canvas id="sizeChart"></canvas>
+        </div>
+
+        <h2>2. Speed Comparison (Milliseconds)</h2>
+        <div class="chart-container">
+            <canvas id="timeChart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        // Size Chart (Bytes)
+        new Chart(document.getElementById('sizeChart'), {
+            type: 'bar',
+            data: {
+                labels: ['Public Key', 'Secret Key', 'Ciphertext'],
+                datasets: [
+                    { label: 'Kyber768', data: [1184, 2400, 1088], backgroundColor: '#36A2EB' },
+                    { label: 'Classic McEliece', data: [1047319, 13948, 194], backgroundColor: '#FF6384' }
+                ]
+            },
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { type: 'logarithmic', title: { display: true, text: 'Bytes (Log Scale)' } } } }
+        });
+
+        // Time Chart (ms)
+        new Chart(document.getElementById('timeChart'), {
+            type: 'bar',
+            data: {
+                labels: ['Key Gen', 'Encapsulation', 'Decapsulation'],
+                datasets: [
+                    { label: 'Kyber768', data: [0.017, 0.009, 0.007], backgroundColor: '#36A2EB' },
+                    { label: 'Classic McEliece', data: [821.357, 0.124, 53.186], backgroundColor: '#FF6384' }
+                ]
+            },
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { title: { display: true, text: 'Milliseconds' } } } }
+        });
+    </script>
+</body>
+</html>
