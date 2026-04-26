@@ -162,7 +162,7 @@ pytest tests/ -v
 
 ## Live Data Visualization
 We have plotted the comparison metrics using Chart.js. 
-You can view the live interactive charts here:[Link](https://alien0525.github.io/quantum-resistant-secure-communication/docs/)
+You can view the live interactive charts here: [Link](https://alien0525.github.io/quantum-resistant-secure-communication/docs/)
 
 ## Live Socket Demo
 To test the live Client/Server architecture over localhost:
