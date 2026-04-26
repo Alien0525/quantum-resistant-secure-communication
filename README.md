@@ -37,12 +37,14 @@ Protection against:
 - **Ciphertext:** ~226 bytes
 
 ## Architecture
+```
 Client A                        Client B
 |                                  |
 |-------- Key Generation --------->|
 |<---- Public Key Exchange --------|
 |--- Encrypt + MAC + Timestamp --> |
 |<------- Verify + Decrypt --------|
+```
 
 ## Technology Stack
 
@@ -55,6 +57,7 @@ Client A                        Client B
 - **Performance:** timeit, memory_profiler
 
 ## Project Structure
+```
 quantum-resistant-secure-communication/
 ├── src/
 │   ├── kyber_scheme.py          # Kyber-based implementation
@@ -68,12 +71,14 @@ quantum-resistant-secure-communication/
 │   ├── test_kyber.py
 │   └── test_mceliece.py
 ├── demos/
-│   ├── demo_kyber.py
-│   └── demo_mceliece.py
+│   ├── client.py
+│   └── server.py
+│   └── run_demo.py
 ├── presentation/
 │   └── slides.pptx
 ├── requirements.txt
 └── README.md
+```
 
 
 ## Installation
@@ -157,7 +162,7 @@ pytest tests/ -v
 
 ## Live Data Visualization
 We have plotted the comparison metrics using Chart.js. 
-You can view the live interactive charts here: **[Link to your GitHub Pages URL]**
+You can view the live interactive charts here:[Link](https://alien0525.github.io/quantum-resistant-secure-communication/docs/)
 
 ## Live Socket Demo
 To test the live Client/Server architecture over localhost:
