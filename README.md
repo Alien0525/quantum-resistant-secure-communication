@@ -1,7 +1,6 @@
 # Quantum-Resistant Secure Communication
 
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Post-Quantum](https://img.shields.io/badge/crypto-post--quantum-brightgreen.svg)](https://csrc.nist.gov/projects/post-quantum-cryptography)
 
 A comprehensive implementation and comparison of **quantum-resistant secure communication protocols** using CRYSTALS-Kyber (lattice-based) and Classic McEliece (code-based) encryption schemes, with interactive demonstrations of attack prevention mechanisms.
@@ -56,21 +55,21 @@ Protection against:
 |  (Sender)    |                                    | (Receiver)   |
 +--------------+                                    +--------------+
        |                                                  |
-       |  1. Bob generates Kyber/McEliece keypair        |
+       |  1. Bob generates Kyber/McEliece keypair         |
        |<-------------------------------------------------|
        |                  Public Key                      |
        |                                                  |
-       |  2. Alice encapsulates shared secret            |
+       |  2. Alice encapsulates shared secret             |
        |------------------------------------------------->|
        |              KEM Ciphertext                      |
        |                                                  |
-       |  3. Both derive AES-256 key from shared secret  |
+       |  3. Both derive AES-256 key from shared secret   |
        |                                                  |
-       |  4. Alice encrypts message with AES-GCM         |
+       |  4. Alice encrypts message with AES-GCM          |
        |------------------------------------------------->|
-       |  Encrypted Message + Auth Tag + Nonce           |
+       |  Encrypted Message + Auth Tag + Nonce            |
        |                                                  |
-       |  5. Bob decrypts and verifies                   |
+       |  5. Bob decrypts and verifies                    |
        |<-------------------------------------------------|
        |            Plaintext Message                     |
        |                                                  |
@@ -138,10 +137,6 @@ pip install -r requirements.txt
 # 6. Verify installation
 python tests/test_installation.py
 ```
-
-### For Linux/Windows
-
-See detailed installation instructions in [INSTALL.md](docs/INSTALL.md).
 
 ---
 
