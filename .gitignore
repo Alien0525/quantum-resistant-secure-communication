@@ -4,20 +4,50 @@ __pycache__/
 *$py.class
 *.so
 .Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
 venv/
 env/
-*.egg-info/
+ENV/
+.venv
 
 # IDE
 .vscode/
 .idea/
 *.swp
-
-# OS
+*.swo
+*~
 .DS_Store
-Thumbs.db
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
 
 # Project specific
+benchmark_results.json
 *.key
 *.pem
 test_outputs/
+*.log
+
+# OS
+Thumbs.db
+.DS_Store

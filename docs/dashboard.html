@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantum-Resistant Cryptography Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+        
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .subtitle {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+        }
+        
+        .stat-label {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .stat-unit {
+            font-size: 0.5em;
+            color: #999;
+            margin-left: 5px;
+        }
+        
+        .chart-container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+        }
+        
+        .chart-title {
+            font-size: 1.5em;
+            color: #333;
+            margin-bottom: 20px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+        
+        .chart-wrapper {
+            position: relative;
+            height: 400px;
+        }
+        
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .scheme-card {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .scheme-header {
+            font-size: 1.8em;
+            color: #667eea;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #eee;
+        }
+        
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .metric-name {
+            color: #666;
+            font-weight: 500;
+        }
+        
+        .metric-value {
+            color: #333;
+            font-weight: bold;
+        }
+        
+        .winner-badge {
+            display: inline-block;
+            background: #4CAF50;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            margin-left: 10px;
+        }
+        
+        .refresh-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.1em;
+            border-radius: 30px;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            margin: 20px auto;
+            display: block;
+        }
+        
+        .refresh-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+        }
+        
+        .refresh-btn:active {
+            transform: scale(0.98);
+        }
+        
+        .timestamp {
+            text-align: center;
+            color: white;
+            margin-top: 20px;
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+        
+        @media (max-width: 768px) {
+            .comparison-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            h1 {
+                font-size: 1.8em;
+            }
+        }
+    </style>
+<!-- BENCHMARK_DATA_INLINE -->
+<script id="benchmarkData" type="application/json">
+{
+  "timestamp": "2026-05-01 10:33:11",
+  "schemes": {
+    "kyber": {
+      "scheme": "CRYSTALS-Kyber768",
+      "algorithm": "Kyber768",
+      "iterations": 1000,
+      "sizes": {
+        "public_key": 1184,
+        "secret_key": 2400,
+        "ciphertext": 1088,
+        "shared_secret": 32
+      },
+      "performance": {
+        "keygen_avg_ms": 0.017748090671375394,
+        "keygen_min_ms": 0.006292015314102173,
+        "keygen_max_ms": 9.419166948646307,
+        "encap_avg_ms": 0.010823007440194488,
+        "encap_min_ms": 0.008249888196587563,
+        "encap_max_ms": 0.07904181256890297,
+        "decap_avg_ms": 0.008854077430441976,
+        "decap_min_ms": 0.006749993190169334,
+        "decap_max_ms": 0.08437479846179485,
+        "total_avg_ms": 0.03742517554201186
+      }
+    },
+    "mceliece": {
+      "scheme": "Classic McEliece",
+      "algorithm": "Classic-McEliece-6960119",
+      "iterations": 50,
+      "sizes": {
+        "public_key": 1047319,
+        "secret_key": 13948,
+        "ciphertext": 194,
+        "shared_secret": 32
+      },
+      "performance": {
+        "keygen_avg_ms": 1240.6948183150962,
+        "keygen_min_ms": 324.1466670297086,
+        "keygen_max_ms": 5318.01970815286,
+        "encap_avg_ms": 0.1468199072405696,
+        "encap_min_ms": 0.12433319352567196,
+        "encap_max_ms": 0.23583299480378628,
+        "decap_avg_ms": 49.58270002156496,
+        "decap_min_ms": 49.29566686041653,
+        "decap_max_ms": 50.59870914556086,
+        "total_avg_ms": 1290.4243382439017
+      }
+    }
+  }
+}
+</script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔐 Quantum-Resistant Cryptography Dashboard</h1>
+            <p class="subtitle">Live Performance Analysis & Comparison</p>
+        </header>
+        
+        <div class="stats-grid" id="statsGrid">
+            <!-- Stats will be populated by JavaScript -->
+        </div>
+        
+        <div class="chart-container">
+            <h2 class="chart-title">📊 Size Comparison (Logarithmic Scale)</h2>
+            <div class="chart-wrapper">
+                <canvas id="sizeChart"></canvas>
+            </div>
+        </div>
+        
+        <div class="chart-container">
+            <h2 class="chart-title">⚡ Performance Comparison</h2>
+            <div class="chart-wrapper">
+                <canvas id="performanceChart"></canvas>
+            </div>
+        </div>
+        
+        <div class="comparison-grid">
+            <div class="scheme-card" id="kyberDetails">
+                <h3 class="scheme-header">CRYSTALS-Kyber768</h3>
+                <div id="kyberMetrics"></div>
+            </div>
+            
+            <div class="scheme-card" id="mcelieceDetails">
+                <h3 class="scheme-header">Classic McEliece</h3>
+                <div id="mcelieceMetrics"></div>
+            </div>
+        </div>
+        
+        <button class="refresh-btn" onclick="loadData()">🔄 Refresh Data</button>
+        
+        <p class="timestamp" id="timestamp"></p>
+    </div>
+    
+    <script>
+        let sizeChart, performanceChart;
+        
+        function formatBytes(bytes) {
+            const units = ['B', 'KB', 'MB', 'GB'];
+            let size = bytes;
+            let unitIndex = 0;
+            
+            while (size >= 1024 && unitIndex < units.length - 1) {
+                size /= 1024;
+                unitIndex++;
+            }
+            
+            return `${size.toFixed(2)} ${units[unitIndex]}`;
+        }
+        
+        function formatTime(ms) {
+            if (ms < 1) {
+                return `${(ms * 1000).toFixed(2)} μs`;
+            } else if (ms < 1000) {
+                return `${ms.toFixed(2)} ms`;
+            } else {
+                return `${(ms / 1000).toFixed(2)} s`;
+            }
+        }
+        
+        function createStatsGrid(data) {
+            const kyber = data.schemes.kyber;
+            const mceliece = data.schemes.mceliece;
+            
+            const stats = [
+                {
+                    label: 'Kyber Total Time',
+                    value: formatTime(kyber.performance.total_avg_ms),
+                    color: '#667eea'
+                },
+                {
+                    label: 'McEliece Total Time',
+                    value: formatTime(mceliece.performance.total_avg_ms),
+                    color: '#764ba2'
+                },
+                {
+                    label: 'Speed Advantage',
+                    value: `${(mceliece.performance.total_avg_ms / kyber.performance.total_avg_ms).toFixed(1)}x`,
+                    color: '#4CAF50'
+                },
+                {
+                    label: 'Iterations Run',
+                    value: `${kyber.iterations} / ${mceliece.iterations}`,
+                    color: '#FF9800'
+                }
+            ];
+            
+            const html = stats.map(stat => `
+                <div class="stat-card">
+                    <div class="stat-label">${stat.label}</div>
+                    <div class="stat-value" style="color: ${stat.color}">${stat.value}</div>
+                </div>
+            `).join('');
+            
+            document.getElementById('statsGrid').innerHTML = html;
+        }
+        
+        function createDetailedMetrics(scheme, data, isWinner) {
+            const sizes = data.sizes;
+            const perf = data.performance;
+            
+            const metrics = [
+                { name: 'Public Key Size', value: formatBytes(sizes.public_key) },
+                { name: 'Secret Key Size', value: formatBytes(sizes.secret_key) },
+                { name: 'Ciphertext Size', value: formatBytes(sizes.ciphertext) },
+                { name: 'Key Generation', value: formatTime(perf.keygen_avg_ms) },
+                { name: 'Encapsulation', value: formatTime(perf.encap_avg_ms) },
+                { name: 'Decapsulation', value: formatTime(perf.decap_avg_ms) },
+                { name: 'Total Time', value: formatTime(perf.total_avg_ms) }
+            ];
+            
+            const html = metrics.map(metric => `
+                <div class="metric-row">
+                    <span class="metric-name">${metric.name}</span>
+                    <span class="metric-value">${metric.value}</span>
+                </div>
+            `).join('');
+            
+            return html;
+        }
+        
+        function createCharts(data) {
+            const kyber = data.schemes.kyber;
+            const mceliece = data.schemes.mceliece;
+            
+            // Destroy existing charts
+            if (sizeChart) sizeChart.destroy();
+            if (performanceChart) performanceChart.destroy();
+            
+            // Size Chart
+            const sizeCtx = document.getElementById('sizeChart').getContext('2d');
+            sizeChart = new Chart(sizeCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Public Key', 'Secret Key', 'Ciphertext'],
+                    datasets: [
+                        {
+                            label: 'Kyber768',
+                            data: [
+                                kyber.sizes.public_key,
+                                kyber.sizes.secret_key,
+                                kyber.sizes.ciphertext
+                            ],
+                            backgroundColor: 'rgba(102, 126, 234, 0.8)',
+                            borderColor: 'rgba(102, 126, 234, 1)',
+                            borderWidth: 2
+                        },
+                        {
+                            label: 'McEliece',
+                            data: [
+                                mceliece.sizes.public_key,
+                                mceliece.sizes.secret_key,
+                                mceliece.sizes.ciphertext
+                            ],
+                            backgroundColor: 'rgba(118, 75, 162, 0.8)',
+                            borderColor: 'rgba(118, 75, 162, 1)',
+                            borderWidth: 2
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                font: { size: 14 }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ' + formatBytes(context.raw);
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            type: 'logarithmic',
+                            title: {
+                                display: true,
+                                text: 'Bytes (Log Scale)',
+                                font: { size: 14, weight: 'bold' }
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return formatBytes(value);
+                                }
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Metric',
+                                font: { size: 14, weight: 'bold' }
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Performance Chart
+            const perfCtx = document.getElementById('performanceChart').getContext('2d');
+            performanceChart = new Chart(perfCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Key Generation', 'Encapsulation', 'Decapsulation', 'Total'],
+                    datasets: [
+                        {
+                            label: 'Kyber768',
+                            data: [
+                                kyber.performance.keygen_avg_ms,
+                                kyber.performance.encap_avg_ms,
+                                kyber.performance.decap_avg_ms,
+                                kyber.performance.total_avg_ms
+                            ],
+                            backgroundColor: 'rgba(102, 126, 234, 0.8)',
+                            borderColor: 'rgba(102, 126, 234, 1)',
+                            borderWidth: 2
+                        },
+                        {
+                            label: 'McEliece',
+                            data: [
+                                mceliece.performance.keygen_avg_ms,
+                                mceliece.performance.encap_avg_ms,
+                                mceliece.performance.decap_avg_ms,
+                                mceliece.performance.total_avg_ms
+                            ],
+                            backgroundColor: 'rgba(118, 75, 162, 0.8)',
+                            borderColor: 'rgba(118, 75, 162, 1)',
+                            borderWidth: 2
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                font: { size: 14 }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ' + formatTime(context.raw);
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Time (Milliseconds)',
+                                font: { size: 14, weight: 'bold' }
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return formatTime(value);
+                                }
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Operation',
+                                font: { size: 14, weight: 'bold' }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        async function loadData() {
+            try {
+                let data;
+
+                // Try inline data first (works with file:// — no CORS issues)
+                const inlineEl = document.getElementById('benchmarkData');
+                if (inlineEl) {
+                    data = JSON.parse(inlineEl.textContent);
+                } else {
+                    // Fallback: fetch JSON when served over HTTP
+                    const response = await fetch('benchmark_results.json');
+                    data = await response.json();
+                }
+                
+                // Update stats
+                createStatsGrid(data);
+                
+                // Update detailed metrics
+                document.getElementById('kyberMetrics').innerHTML = 
+                    createDetailedMetrics('Kyber', data.schemes.kyber, true);
+                document.getElementById('mcelieceMetrics').innerHTML = 
+                    createDetailedMetrics('McEliece', data.schemes.mceliece, false);
+                
+                // Update charts
+                createCharts(data);
+                
+                // Update timestamp
+                document.getElementById('timestamp').textContent = 
+                    `Last updated: ${data.timestamp}`;
+                
+            } catch (error) {
+                console.error('Error loading data:', error);
+                alert('Could not load benchmark data. Please run: python analysis/live_benchmark.py');
+            }
+        }
+        
+        // Load data on page load
+        window.onload = loadData;
+    </script>
+</body>
+</html>
