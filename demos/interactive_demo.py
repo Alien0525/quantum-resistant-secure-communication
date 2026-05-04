@@ -274,7 +274,7 @@ def main_menu():
             press_enter_to_continue()
         elif choice == '0':
             print()
-            print_success("Thank you for using PQC Secure Communication Demo!")
+            print_success("Thank you for using PQC Secure Communication!")
             print()
             break
         else:

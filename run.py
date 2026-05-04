@@ -182,7 +182,7 @@ def main():
             view_file(project_root / 'QUICKSTART.md')
         
         elif choice == '0':
-            print("\n👋 Thank you for using PQC Secure Communication Demo!")
+            print("\n👋 Thank you for using PQC Secure Communication!")
             print("🌟 Star the project on GitHub if you found it useful!\n")
             sys.exit(0)
         

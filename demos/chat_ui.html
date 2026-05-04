@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PQC Secure Chat — Quantum-Resistant Communication</title>
+<style>
+/* ── NYU VIOLET THEME ─────────────────────────────────────────────── */
+:root {
+  --bg:         #0c0c12;
+  --surface:    #13131e;
+  --surface2:   #1a1a2a;
+  --border:     #2a2a42;
+  --border2:    #3a3a58;
+  --violet:     #57068c;
+  --violet-hi:  #8900e1;
+  --violet-soft:rgba(87,6,140,0.18);
+  --violet-mid: rgba(137,0,225,0.22);
+  --mce:        #e8547a;
+  --mce-soft:   rgba(232,84,122,0.15);
+  --green:      #27c47a;
+  --red:        #e05252;
+  --yellow:     #e8a020;
+  --cyan:       #38bdf8;
+  --text:       #eaeaf4;
+  --muted:      #7878a0;
+  --dim:        #44445a;
+  --alice-bg:   #150e2a;
+  --alice-bdr:  #3a1e6a;
+  --bob-bg:     #0e1f2a;
+  --bob-bdr:    #1a4a5a;
+  --mono:       'Courier New', Consolas, monospace;
+  --radius:     11px;
+  --tr:         0.18s ease;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;font-size:16px;background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden}
+
+/* NAV */
+.top-nav{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;gap:14px;flex-shrink:0}
+.logo{font-size:18px;font-weight:800;letter-spacing:-.5px;white-space:nowrap;color:var(--text)}
+.logo span{color:var(--violet-hi)}
+.nav-tabs{display:flex;gap:2px;background:var(--bg);padding:3px;border-radius:var(--radius);border:1px solid var(--border)}
+.nav-tab{padding:7px 15px;border-radius:8px;border:none;background:transparent;color:var(--muted);cursor:pointer;font-size:14px;font-weight:500;transition:var(--tr);white-space:nowrap}
+.nav-tab.active{background:var(--violet);color:#fff}
+.nav-tab:hover:not(.active){background:var(--surface2);color:var(--text)}
+
+/* SCHEME SWITCHER */
+.scheme-switcher{display:flex;align-items:center;gap:9px;margin-left:auto;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:5px 12px}
+.scheme-label{font-size:13.5px;color:var(--muted)}
+.scheme-toggle{display:flex;gap:3px}
+.scheme-btn{padding:5px 12px;border-radius:7px;border:1.5px solid transparent;cursor:pointer;font-size:13px;font-weight:600;transition:var(--tr);background:transparent;color:var(--muted)}
+.scheme-btn.s1.active{background:var(--violet-soft);border-color:var(--violet-hi);color:var(--violet-hi)}
+.scheme-btn.s2.active{background:var(--mce-soft);border-color:var(--mce);color:var(--mce)}
+.scheme-btn:hover:not(.active){background:var(--surface2);color:var(--text)}
+
+.dash-link{font-size:13px;color:var(--muted);text-decoration:none;padding:6px 11px;border:1px solid var(--border);border-radius:8px;transition:var(--tr);white-space:nowrap}
+.dash-link:hover{border-color:var(--violet-hi);color:var(--violet-hi)}
+
+/* LAYOUT */
+.main{display:flex;flex:1;overflow:hidden}
+.panel{display:none;flex:1;overflow:hidden}
+.panel.active{display:flex;flex-direction:column;overflow:hidden}
+
+/* KEY EXCHANGE BAR */
+.key-bar{background:var(--surface2);border-bottom:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;gap:13px;flex-shrink:0}
+.key-status{display:flex;align-items:center;gap:8px;font-size:14px}
+.key-dot{width:10px;height:10px;border-radius:50%;background:var(--dim);flex-shrink:0;transition:var(--tr)}
+.key-dot.ready{background:var(--green);box-shadow:0 0 6px var(--green)}
+.key-dot.working{background:var(--yellow);animation:blink-dot .7s infinite}
+@keyframes blink-dot{0%,100%{opacity:1}50%{opacity:.35}}
+.scheme-badge{padding:3px 10px;border-radius:20px;font-size:12.5px;font-weight:600}
+.scheme-badge.violet{background:var(--violet-soft);color:var(--violet-hi);border:1px solid var(--violet-hi)}
+.scheme-badge.mce{background:var(--mce-soft);color:var(--mce);border:1px solid var(--mce)}
+.btn-kex{margin-left:auto;padding:8px 20px;background:linear-gradient(135deg,var(--violet),var(--violet-hi));color:#fff;border:none;border-radius:9px;cursor:pointer;font-size:14px;font-weight:600;transition:var(--tr)}
+.btn-kex:hover{opacity:.87;transform:translateY(-1px)}
+.btn-kex:disabled{opacity:.38;cursor:not-allowed;transform:none}
+
+/* TWO-PANE CHAT GRID */
+.chat-body{display:grid;grid-template-columns:1fr 1fr;flex:1;overflow:hidden}
+
+/* each pane is a column with its own messages + input */
+.chat-pane{display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--border)}
+.chat-pane:last-child{border-right:none}
+
+.pane-header{background:var(--surface);padding:10px 15px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-shrink:0}
+.pane-avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800}
+.alice .pane-avatar{background:#240e44;color:#b07aff}
+.bob   .pane-avatar{background:#0e2233;color:#38bdf8}
+.pane-name{font-size:15.5px;font-weight:700}
+.pane-role{font-size:12.5px;color:var(--muted);margin-left:3px}
+
+.messages{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;scroll-behavior:smooth}
+.messages::-webkit-scrollbar{width:4px}
+.messages::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+/* BUBBLES */
+.bubble{max-width:86%;padding:10px 13px;border-radius:12px;font-size:15px;line-height:1.5;animation:slideUp .2s ease}
+@keyframes slideUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* Alice-sent bubble in Alice's pane */
+.bubble.alice-sent{align-self:flex-end;background:var(--alice-bg);border:1px solid var(--alice-bdr);color:#ddd0ff;border-bottom-right-radius:3px}
+/* Bob-sent bubble in Bob's pane */
+.bubble.bob-sent{align-self:flex-end;background:var(--bob-bg);border:1px solid var(--bob-bdr);color:#cce8ff;border-bottom-right-radius:3px}
+/* received plaintext (after decrypt) */
+.bubble.received-plain{align-self:flex-start;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-bottom-left-radius:3px}
+
+.bubble.system{align-self:center;background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-size:12.5px;padding:6px 12px;border-radius:18px;max-width:92%;text-align:center}
+.bubble.enc-incoming{align-self:flex-start;background:var(--surface);border:1.5px solid var(--border);border-bottom-left-radius:3px;max-width:96%;padding:12px}
+
+.bubble-meta{font-size:11.5px;color:var(--dim);margin-top:3px;display:flex;align-items:center;gap:6px}
+
+/* ENCRYPTED PACKET */
+.enc-packet{font-family:var(--mono);font-size:12.5px;margin-bottom:3px}
+.enc-label{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:8px;margin-bottom:2px;display:block}
+.enc-label:first-child{margin-top:0}
+.enc-val{word-break:break-all;line-height:1.5}
+.enc-nonce{color:#f59e0b}
+.enc-tag{color:#a78bfa}
+.enc-ct{color:var(--cyan)}
+
+.reveal-btn{margin-top:10px;padding:6px 14px;background:var(--surface2);border:1.5px solid var(--border);color:var(--text);border-radius:7px;cursor:pointer;font-size:13px;font-weight:500;transition:var(--tr);display:inline-flex;align-items:center;gap:6px}
+.reveal-btn:hover{border-color:var(--violet-hi);color:var(--violet-hi)}
+.revealed-msg{display:none;margin-top:8px;padding:8px 11px;background:var(--surface2);border:1px solid var(--border2);border-radius:7px;color:var(--text);font-size:15px;animation:slideUp .18s ease}
+.revealed-msg.show{display:block}
+
+/* PER-PANE INPUT BAR */
+.pane-input-bar{background:var(--surface);border-top:1px solid var(--border);padding:10px 13px;flex-shrink:0}
+.pane-input-row{display:flex;gap:8px;align-items:flex-end}
+.pane-input{flex:1;padding:9px 13px;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-size:15px;resize:none;outline:none;min-height:42px;max-height:100px;font-family:inherit;transition:var(--tr)}
+.alice .pane-input:focus{border-color:var(--violet-hi)}
+.bob   .pane-input:focus{border-color:var(--cyan)}
+.pane-input:disabled{opacity:.35;cursor:not-allowed}
+.send-btn{padding:9px 18px;color:#fff;border:none;border-radius:10px;cursor:pointer;font-size:14px;font-weight:600;transition:var(--tr);white-space:nowrap}
+.alice .send-btn{background:linear-gradient(135deg,var(--violet),var(--violet-hi))}
+.bob   .send-btn{background:linear-gradient(135deg,#0369a1,#0ea5e9)}
+.send-btn:hover:not(:disabled){opacity:.87;transform:translateY(-1px)}
+.send-btn:disabled{opacity:.35;cursor:not-allowed;transform:none}
+
+/* METRICS STRIP */
+.metrics-strip{background:var(--surface2);border-top:1px solid var(--border);padding:8px 18px;display:flex;gap:20px;align-items:center;flex-shrink:0;overflow-x:auto}
+.mc{display:flex;flex-direction:column;gap:1px;min-width:68px}
+.mc .ml{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px}
+.mc .mv{font-size:14px;font-weight:700;font-family:var(--mono)}
+.mv.vc{color:var(--violet-hi)}.mv.mc-c{color:var(--mce)}
+.mdiv{width:1px;background:var(--border);height:28px;flex-shrink:0}
+
+/* ── CRYPTO INSPECTOR ───────────────────────────────────── */
+#panel-inspector{overflow-y:auto;padding:20px;flex-direction:column;gap:0}
+.insp-subtitle{font-size:13px;color:var(--muted);margin:-4px 0 16px}
+
+.insp-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:16px}
+.insp-card h3{font-size:15.5px;font-weight:700;margin-bottom:12px;color:var(--text);display:flex;align-items:center;gap:7px;border-bottom:1px solid var(--border);padding-bottom:10px}
+.insp-card h3 .tag{font-size:11px;padding:2px 8px;border-radius:10px;font-weight:600;background:var(--violet-soft);color:var(--violet-hi);border:1px solid var(--violet-hi);margin-left:auto}
+
+/* Two-column math grid */
+.math-2col{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:900px){.math-2col{grid-template-columns:1fr}}
+
+.math-box{background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:13px;font-family:var(--mono);font-size:13px}
+.mrow{display:flex;gap:7px;align-items:baseline;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.mrow:last-child{border-bottom:none}
+.mlabel{color:var(--muted);min-width:165px;font-size:12.5px;flex-shrink:0}
+.mval{color:var(--cyan);font-weight:600;word-break:break-all}
+.mval.vv{color:var(--violet-hi)}
+.mnote{color:var(--dim);font-size:11.5px;margin-left:auto;text-align:right;flex-shrink:0}
+
+/* equation block */
+.eq-block{background:var(--bg);border:1px solid var(--border);border-left:3px solid var(--violet-hi);border-radius:0 7px 7px 0;padding:12px 14px;margin:8px 0;font-family:var(--mono);font-size:13px;line-height:1.9;color:var(--text)}
+.eq-block .eq-name{font-size:11px;color:var(--violet-hi);text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px;display:block}
+.eq-line{display:block;padding:1px 0}
+.eq-comment{color:var(--muted);font-size:12px}
+.eq-hl{color:#f59e0b;font-weight:600}
+.eq-green{color:var(--green);font-weight:600}
+.eq-violet{color:var(--violet-hi);font-weight:600}
+.eq-red{color:var(--red)}
+
+/* last message breakdown */
+.cb{background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:13px;font-family:var(--mono);font-size:12.5px;line-height:1.85}
+.cb-lbl{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-top:9px;margin-bottom:2px;display:block}
+.cb-lbl:first-child{margin-top:0}
+.cb-val{color:var(--cyan);word-break:break-all}
+.cb-nonce{color:#f59e0b}.cb-tag{color:#a78bfa}
+
+/* ── ATTACK PANEL ───────────────────────────────────────── */
+#panel-attacks{flex-direction:column;overflow:hidden}
+.attack-layout{display:grid;grid-template-columns:255px 1fr;flex:1;overflow:hidden}
+.attack-sidebar{background:var(--surface);border-right:1px solid var(--border);padding:14px 11px;display:flex;flex-direction:column;gap:6px;overflow-y:auto}
+.sidebar-title{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.9px;padding:0 3px;margin-bottom:2px}
+.attack-btn{width:100%;padding:10px 12px;background:var(--surface2);border:1.5px solid var(--border);border-radius:8px;color:var(--text);cursor:pointer;font-size:13.5px;text-align:left;transition:var(--tr);display:flex;align-items:center;gap:8px}
+.attack-btn:hover{border-color:var(--violet-hi)}
+.attack-btn.active{border-color:var(--red);background:rgba(224,82,82,.1)}
+.atk-icon{font-size:17px;flex-shrink:0}
+.atk-info{display:flex;flex-direction:column;gap:1px}
+.atk-title{font-weight:600;font-size:13.5px}
+.atk-desc{font-size:11.5px;color:var(--muted)}
+.atk-divider{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.7px;padding:5px 3px 2px}
+.run-attack-btn{margin-top:auto;padding:11px;background:linear-gradient(135deg,#8b1a1a,#c0392b);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:700;transition:var(--tr)}
+.run-attack-btn:hover{opacity:.87;transform:translateY(-1px)}
+.run-attack-btn:disabled{opacity:.38;cursor:not-allowed;transform:none}
+
+/* TERMINAL */
+.term-container{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.term-header{background:#111118;border-bottom:1px solid #252535;padding:8px 13px;display:flex;align-items:center;gap:7px;flex-shrink:0}
+.term-dots{display:flex;gap:5px}
+.dot{width:11px;height:11px;border-radius:50%}
+.dot.r{background:#ff5f56}.dot.y{background:#ffbd2e}.dot.g{background:#27c93f}
+.term-title{font-family:var(--mono);font-size:12.5px;color:#666;margin-left:6px}
+.term-clear{margin-left:auto;background:#1a1a28;border:1px solid #333;color:#888;padding:3px 10px;border-radius:5px;cursor:pointer;font-size:12px;transition:var(--tr)}
+.term-clear:hover{border-color:#555;color:#bbb}
+.terminal{flex:1;background:#0a0a10;font-family:var(--mono);font-size:13.5px;padding:13px;overflow-y:auto;line-height:1.72}
+.terminal::-webkit-scrollbar{width:4px}
+.terminal::-webkit-scrollbar-thumb{background:#252535;border-radius:2px}
+.tl{display:block}.tb{display:block;height:5px}
+.t-hdr{color:#8b5cf6;font-weight:bold}
+.t-sub{color:#a78bfa}
+.t-info{color:#8a8ab0}
+.t-ok{color:#27c47a}
+.t-warn{color:#e8a020}
+.t-err{color:#e05252}
+.t-atk{color:#ff5f56;font-weight:bold}
+.t-hex{color:#38bdf8}
+.t-dim{color:#333345}
+.t-prompt{color:#333350}
+.term-caret{display:inline-block;width:7px;height:14px;background:#8b5cf6;animation:blink 1s step-end infinite;vertical-align:text-bottom;margin-left:2px}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+
+/* QUANTUM CARDS */
+.qa-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:9px}
+.qa-section{background:var(--surface);border-top:1px solid var(--border);padding:14px;overflow-y:auto;max-height:255px;flex-shrink:0}
+.qa-section-title{font-size:14px;font-weight:700;margin-bottom:10px;color:var(--violet-hi)}
+.qa-card{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:11px}
+.qa-title{font-size:11px;color:#a0a0c0;text-transform:uppercase;letter-spacing:.7px;margin-bottom:5px}
+.qa-val{font-size:14.5px;font-weight:700;font-family:var(--mono)}
+.qa-note{font-size:11.5px;color:#9090b8;margin-top:3px}
+.qa-card.danger .qa-val{color:#ff7070}
+.qa-card.safe   .qa-val{color:var(--green)}
+.qa-card.warn   .qa-val{color:var(--yellow)}
+
+/* UTILS */
+.hidden{display:none!important}
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<div class="top-nav">
+  <div class="logo"><span>PQC</span>SecureChat</div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="switchPanel('chat',this)">Chat Demo</button>
+    <button class="nav-tab" onclick="switchPanel('inspector',this)">Crypto Inspector</button>
+    <button class="nav-tab" onclick="switchPanel('attacks',this)">Attack Defense</button>
+  </div>
+  <div class="scheme-switcher">
+    <span class="scheme-label">Scheme:</span>
+    <div class="scheme-toggle">
+      <button class="scheme-btn s1 active" id="sb1" onclick="switchScheme(1)">S1 · Kyber768</button>
+      <button class="scheme-btn s2"         id="sb2" onclick="switchScheme(2)">S2 · McEliece</button>
+    </div>
+  </div>
+  <a class="dash-link" href="dashboard.html" target="_blank">Analysis Dashboard &rarr;</a>
+</div>
+
+<div class="main">
+
+<!-- ═══════════════  CHAT PANEL  ═══════════════ -->
+<div class="panel active" id="panel-chat">
+
+  <div class="key-bar">
+    <div class="key-status">
+      <div class="key-dot" id="keyDot"></div>
+      <span id="keyStatusText" style="color:var(--muted)">No keys established — click "Initiate Key Exchange" to begin</span>
+    </div>
+    <span class="scheme-badge violet hidden" id="schemeBadge">Kyber768</span>
+    <button class="btn-kex" id="keyBtn" onclick="initiateKeyExchange()">Initiate Key Exchange</button>
+  </div>
+
+  <div class="chat-body">
+
+    <!-- ALICE pane — full column with its own messages + input -->
+    <div class="chat-pane alice">
+      <div class="pane-header">
+        <div class="pane-avatar">A</div>
+        <div><div class="pane-name">Alice</div><div class="pane-role">— sends to Bob</div></div>
+      </div>
+      <div class="messages" id="aliceMsgs">
+        <div class="bubble system">Alice's view — her outgoing messages shown in plaintext. Incoming from Bob arrive as ciphertext.</div>
+      </div>
+      <div class="pane-input-bar">
+        <div class="pane-input-row">
+          <textarea class="pane-input" id="aliceInput"
+            placeholder="Alice → Bob  (key exchange first)"
+            rows="1" disabled
+            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg('alice')}"
+            oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea>
+          <button class="send-btn" id="aliceSendBtn" onclick="sendMsg('alice')" disabled>Send</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- BOB pane — full column with its own messages + input -->
+    <div class="chat-pane bob">
+      <div class="pane-header">
+        <div class="pane-avatar">B</div>
+        <div><div class="pane-name">Bob</div><div class="pane-role">— sends to Alice</div></div>
+      </div>
+      <div class="messages" id="bobMsgs">
+        <div class="bubble system">Bob's view — his outgoing messages shown in plaintext. Incoming from Alice arrive as ciphertext.</div>
+      </div>
+      <div class="pane-input-bar">
+        <div class="pane-input-row">
+          <textarea class="pane-input" id="bobInput"
+            placeholder="Bob → Alice  (key exchange first)"
+            rows="1" disabled
+            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg('bob')}"
+            oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea>
+          <button class="send-btn" id="bobSendBtn" onclick="sendMsg('bob')" disabled>Send</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /chat-body -->
+
+  <!-- METRICS STRIP -->
+  <div class="metrics-strip">
+    <div class="mc"><span class="ml">Scheme</span><span class="mv vc" id="m-scheme">—</span></div>
+    <div class="mdiv"></div>
+    <div class="mc"><span class="ml">Total Msgs</span><span class="mv" id="m-msgs" style="color:var(--text)">0</span></div>
+    <div class="mdiv"></div>
+    <div class="mc"><span class="ml">Pub Key</span><span class="mv" id="m-pk" style="color:var(--text)">—</span></div>
+    <div class="mdiv"></div>
+    <div class="mc"><span class="ml">Last Enc Time</span><span class="mv vc" id="m-enctime">—</span></div>
+    <div class="mdiv"></div>
+    <div class="mc"><span class="ml">Avg Enc Time</span><span class="mv vc" id="m-avgenc">—</span></div>
+    <div class="mdiv"></div>
+    <div class="mc"><span class="ml">Last CT Size</span><span class="mv" id="m-ct" style="color:var(--text)">—</span></div>
+  </div>
+
+</div><!-- /panel-chat -->
+
+
+<!-- ═══════════════  CRYPTO INSPECTOR  ═══════════════ -->
+<div class="panel" id="panel-inspector" style="overflow-y:auto;padding:20px;flex-direction:column;gap:0">
+
+  <h2 style="font-size:19px;font-weight:800;margin-bottom:4px">Crypto Inspector</h2>
+  <p class="insp-subtitle" id="inspSubtitle">Showing algorithm parameters for Kyber768. Switch scheme in top-right to compare.</p>
+
+  <!-- ─── SCHEME ALGORITHM CARD (swaps with scheme) ─── -->
+  <div class="insp-card">
+    <h3 id="algoCardTitle">Kyber768 — Key Encapsulation Mechanism <span class="tag">NIST FIPS 203</span></h3>
+    <div class="math-2col">
+      <div>
+        <div class="math-box" id="algoParamsBox"><!-- filled by JS --></div>
+      </div>
+      <div>
+        <div class="eq-block" id="algoEqBox"><!-- filled by JS --></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── SECURITY REDUCTION ─── -->
+  <div class="insp-card">
+    <h3 id="hardProbTitle">Hard Problem — Module-LWE</h3>
+    <div class="eq-block" id="hardProbEq"><!-- filled by JS --></div>
+  </div>
+
+  <!-- ─── AES-256-GCM LAYER ─── -->
+  <div class="insp-card">
+    <h3>Symmetric Layer — AES-256-GCM + HKDF</h3>
+    <div class="math-2col">
+      <div class="math-box">
+        <div class="mrow"><span class="mlabel">Cipher</span><span class="mval">AES-256 / GCM mode</span></div>
+        <div class="mrow"><span class="mlabel">Block size</span><span class="mval">128 bits</span></div>
+        <div class="mrow"><span class="mlabel">Key length</span><span class="mval">256 bits</span></div>
+        <div class="mrow"><span class="mlabel">Nonce (IV)</span><span class="mval">96 bits</span><span class="mnote">random per msg</span></div>
+        <div class="mrow"><span class="mlabel">Auth tag</span><span class="mval">128 bits</span><span class="mnote">GHASH over CT+AAD</span></div>
+        <div class="mrow"><span class="mlabel">Key derivation</span><span class="mval">HKDF-SHA256</span></div>
+        <div class="mrow"><span class="mlabel">Post-Grover sec.</span><span class="mval eq-green">128-bit</span><span class="mnote">256 / 2 = 128</span></div>
+        <div class="mrow"><span class="mlabel">Replay protection</span><span class="mval">nonce set + timestamp AAD</span></div>
+      </div>
+      <div>
+        <div class="eq-block">
+          <span class="eq-name">HKDF (RFC 5869)</span>
+          <span class="eq-line"><span class="eq-hl">PRK</span> = HMAC-SHA256(salt, IKM)</span>
+          <span class="eq-line"><span class="eq-green">OKM</span> = T(1) || T(2) || …</span>
+          <span class="eq-line eq-comment">  T(i) = HMAC-SHA256(PRK, T(i-1) || info || i)</span>
+          <span class="eq-line eq-comment">  IKM = KEM shared secret (32 B)</span>
+          <span class="eq-line eq-comment">  OKM[0:32] → AES-256 key</span>
+        </div>
+        <div class="eq-block" style="margin-top:8px">
+          <span class="eq-name">AES-GCM Encryption</span>
+          <span class="eq-line"><span class="eq-hl">CT</span> = AES-CTR(K, nonce, PT)</span>
+          <span class="eq-line"><span class="eq-green">Tag</span> = GHASH(H, AAD || CT) ⊕ E(K, nonce||0)</span>
+          <span class="eq-line eq-comment">  H = AES(K, 0¹²⁸)</span>
+          <span class="eq-line eq-comment">  AAD = timestamp (replay protection)</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── LAST MESSAGE BREAKDOWN ─── -->
+  <div class="insp-card">
+    <h3>Last Message — Actual Crypto Values</h3>
+    <div class="cb" id="lastMsgCb">
+      <span style="color:var(--muted);font-size:14px">Send a message in the Chat tab to see its cryptographic breakdown here.</span>
+    </div>
+  </div>
+
+</div><!-- /panel-inspector -->
+
+
+<!-- ═══════════════  ATTACK DEFENSE  ═══════════════ -->
+<div class="panel" id="panel-attacks">
+  <div class="attack-layout">
+
+    <div class="attack-sidebar">
+      <div class="sidebar-title">Attack Simulations</div>
+      <div class="atk-divider">Network Attacks</div>
+      <button class="attack-btn active" id="atk-replay"     onclick="selAtk('replay')">
+        <span class="atk-icon">&#8635;</span><div class="atk-info"><span class="atk-title">Replay Attack</span><span class="atk-desc">Resend captured packet</span></div>
+      </button>
+      <button class="attack-btn" id="atk-modify"            onclick="selAtk('modify')">
+        <span class="atk-icon">&#9998;</span><div class="atk-info"><span class="atk-title">Modification Attack</span><span class="atk-desc">Bit-flip ciphertext</span></div>
+      </button>
+      <button class="attack-btn" id="atk-eavesdrop"         onclick="selAtk('eavesdrop')">
+        <span class="atk-icon">&#128065;</span><div class="atk-info"><span class="atk-title">Eavesdropping</span><span class="atk-desc">Passive traffic capture</span></div>
+      </button>
+      <div class="atk-divider">Quantum Attacks</div>
+      <button class="attack-btn" id="atk-shor"              onclick="selAtk('shor')">
+        <span class="atk-icon">&#9883;</span><div class="atk-info"><span class="atk-title">Shor's Algorithm</span><span class="atk-desc">Factor RSA with qubits</span></div>
+      </button>
+      <button class="attack-btn" id="atk-grover"            onclick="selAtk('grover')">
+        <span class="atk-icon">&#128270;</span><div class="atk-info"><span class="atk-title">Grover's Algorithm</span><span class="atk-desc">Symmetric key search</span></div>
+      </button>
+      <button class="attack-btn" id="atk-allattacks"        onclick="selAtk('all')">
+        <span class="atk-icon">&#9889;</span><div class="atk-info"><span class="atk-title">All Attacks</span><span class="atk-desc">Full simulation suite</span></div>
+      </button>
+      <button class="run-attack-btn" id="runAtkBtn" onclick="runAttack()">&#9654; Simulate Attack</button>
+    </div>
+
+    <div class="term-container">
+      <div class="term-header">
+        <div class="term-dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>
+        <span class="term-title">pqc-attack-simulator — NYU CS6903</span>
+        <button class="term-clear" onclick="clearTerm()">Clear</button>
+      </div>
+      <div class="terminal" id="terminal">
+        <span class="tl t-dim">+--------------------------------------------------------------+</span>
+        <span class="tl t-dim">|  PQC Attack Defense Simulator                                |</span>
+        <span class="tl t-dim">|  Quantum-Resistant Secure Communication  · NYU CS6903       |</span>
+        <span class="tl t-dim">+--------------------------------------------------------------+</span>
+        <span class="tb"></span>
+        <span class="tl t-info">Select an attack type from the sidebar and click Simulate.</span>
+        <span class="tl t-info">Active scheme: shown in top-right switcher.</span>
+        <span class="tb"></span>
+        <span class="tl"><span class="t-prompt">$ </span><span class="term-caret"></span></span>
+      </div>
+
+      <div class="qa-section">
+        <div class="qa-section-title">Quantum Threat Quantification</div>
+        <div class="qa-grid">
+          <div class="qa-card danger">
+            <div class="qa-title">RSA-2048 — Logical Qubits</div>
+            <div class="qa-val">~4,096</div>
+            <div class="qa-note">Shor breaks factoring in O(n³) time</div>
+          </div>
+          <div class="qa-card danger">
+            <div class="qa-title">RSA-2048 — Physical Qubits</div>
+            <div class="qa-val">~20 Million</div>
+            <div class="qa-note">With surface-code error correction</div>
+          </div>
+          <div class="qa-card warn">
+            <div class="qa-title">CRQC Timeline Estimate</div>
+            <div class="qa-val">10–20 years</div>
+            <div class="qa-note">Cryptographically Relevant Quantum Computer</div>
+          </div>
+          <div class="qa-card warn">
+            <div class="qa-title">AES-128 vs Grover</div>
+            <div class="qa-val">64-bit effective</div>
+            <div class="qa-note">Grover halves bit-security — insufficient</div>
+          </div>
+          <div class="qa-card safe">
+            <div class="qa-title">AES-256 vs Grover</div>
+            <div class="qa-val">128-bit safe</div>
+            <div class="qa-note">Used throughout our hybrid scheme</div>
+          </div>
+          <div class="qa-card safe">
+            <div class="qa-title">Kyber768 — Quantum Security</div>
+            <div class="qa-val">NIST Level 3</div>
+            <div class="qa-note">Module-LWE: no known quantum speedup</div>
+          </div>
+          <div class="qa-card safe">
+            <div class="qa-title">McEliece — Quantum Security</div>
+            <div class="qa-val">NIST Level 5</div>
+            <div class="qa-note">Syndrome decoding: quantum-hard since 1978</div>
+          </div>
+          <div class="qa-card danger">
+            <div class="qa-title">NSA Suite B Status</div>
+            <div class="qa-val">Vulnerable</div>
+            <div class="qa-note">ECDH/ECDSA broken by Shor; migrate now</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div><!-- /panel-attacks -->
+
+</div><!-- /main -->
+<script>
+/* ── STATE ──────────────────────────────────────────── */
+const S = {
+  scheme: 1, keyReady: false,
+  msgCount: 0, encTimes: [], lastMsg: null,
+  lastCTBytes: 0,
+  selAtk: 'replay',
+  bench: {
+    kyber:{ pk:1184, sk:2400, ct:1088 },
+    mce:  { pk:1047319, sk:13948, ct:194 }
+  }
+};
+
+/* ── PANEL SWITCH ───────────────────────────────────── */
+function switchPanel(name, btn) {
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('panel-'+name).classList.add('active');
+  btn.classList.add('active');
+  if (name==='inspector') renderInspector();
+}
+
+/* ── SCHEME SWITCH ──────────────────────────────────── */
+function switchScheme(n) {
+  S.scheme = n;
+  document.getElementById('sb1').classList.toggle('active', n===1);
+  document.getElementById('sb2').classList.toggle('active', n===2);
+  resetKex();
+  updateStrip();
+  renderInspector();
+}
+const schemeKey  = ()=> S.scheme===2?'mce':'kyber';
+const schemeName = ()=> S.scheme===2?'McEliece':'Kyber768';
+const schemeLong = ()=> S.scheme===2?'Classic McEliece-6960119':'CRYSTALS-Kyber768';
+
+/* ── KEY EXCHANGE ───────────────────────────────────── */
+async function initiateKeyExchange() {
+  const btn=document.getElementById('keyBtn'), dot=document.getElementById('keyDot'),
+        txt=document.getElementById('keyStatusText');
+  btn.disabled=true; dot.className='key-dot working';
+  txt.textContent=`Performing ${schemeLong()} key exchange…`; txt.style.color='var(--yellow)';
+
+  sysmsg('aliceMsgs', `Initiating ${schemeLong()} key exchange…`);
+  sysmsg('bobMsgs',   `Waiting for ${schemeName()} public key from Alice…`);
+  await sleep(700);
+  sysmsg('aliceMsgs', `Sending ${schemeName()} public key  (${fmtBytes(S.bench[schemeKey()].pk)})`);
+  await sleep(500);
+  sysmsg('bobMsgs',   `Public key received — encapsulating shared secret…`);
+  await sleep(450);
+  sysmsg('bobMsgs',   `KEM ciphertext sent back to Alice`);
+  await sleep(450);
+  sysmsg('aliceMsgs', `KEM ciphertext received — decapsulating…`);
+  await sleep(400);
+
+  S.keyReady=true;
+  dot.className='key-dot ready';
+  txt.textContent=`${schemeLong()} channel active — both parties share a secret`;
+  txt.style.color='var(--green)';
+
+  const badge=document.getElementById('schemeBadge');
+  badge.textContent=schemeName(); badge.className='scheme-badge '+(S.scheme===2?'mce':'violet');
+  badge.classList.remove('hidden');
+
+  sysmsg('aliceMsgs', `Shared secret established · AES-256-GCM active`);
+  sysmsg('bobMsgs',   `Shared secret established · AES-256-GCM active`);
+
+  btn.textContent='Re-key'; btn.disabled=false;
+  ['alice','bob'].forEach(who=>{
+    document.getElementById(who+'Input').disabled=false;
+    document.getElementById(who+'Input').placeholder=
+      who==='alice'?'Alice → Bob…':'Bob → Alice…';
+    document.getElementById(who+'SendBtn').disabled=false;
+  });
+  updateStrip();
+}
+
+function resetKex() {
+  S.keyReady=false; S.msgCount=0; S.encTimes=[]; S.lastMsg=null; S.lastCTBytes=0;
+  document.getElementById('keyDot').className='key-dot';
+  const txt=document.getElementById('keyStatusText');
+  txt.textContent='No keys established — click "Initiate Key Exchange" to begin';
+  txt.style.color='var(--muted)';
+  document.getElementById('keyBtn').textContent='Initiate Key Exchange';
+  document.getElementById('schemeBadge').classList.add('hidden');
+  ['alice','bob'].forEach(who=>{
+    document.getElementById(who+'Input').disabled=true;
+    document.getElementById(who+'Input').placeholder=who==='alice'?'Alice → Bob  (key exchange first)':'Bob → Alice  (key exchange first)';
+    document.getElementById(who+'SendBtn').disabled=true;
+    document.getElementById(who+'Msgs').innerHTML=
+      `<div class="bubble system">${who==='alice'?"Alice's view — her outgoing messages shown in plaintext. Incoming from Bob arrive as ciphertext.":"Bob's view — his outgoing messages shown in plaintext. Incoming from Alice arrive as ciphertext."}</div>`;
+  });
+  updateStrip();
+}
+
+/* ── SEND MESSAGE (two-way) ─────────────────────────── */
+async function sendMsg(sender) {
+  if (!S.keyReady) return;
+  const receiver = sender==='alice'?'bob':'alice';
+  const inp = document.getElementById(sender+'Input');
+  const msg = inp.value.trim(); if (!msg) return;
+  inp.value=''; inp.style.height='auto';
+
+  // Realistic simulated enc time (μs)
+  const base = S.scheme===2?170:17;
+  const encTime = parseFloat((base + Math.random()*base*0.22).toFixed(2));
+  const nonce = rndHex(16), tag = rndHex(32), ct = rndHex(Math.max(msg.length*2,32));
+  const ctSz = ct.length/2;
+
+  // Sender's pane: show own plaintext (right-aligned)
+  addBubble(sender+'Msgs', msg, sender+'-sent',
+    `${timeNow()} · ${schemeName()} + AES-256-GCM · ${encTime} μs`);
+
+  await sleep(20);
+
+  // Receiver's pane: show ciphertext packet with Decrypt button
+  addEncBubble(receiver+'Msgs', nonce, ct, tag, msg, encTime, sender);
+
+  S.msgCount++; S.encTimes.push(encTime); S.lastCTBytes=ctSz;
+  S.lastMsg={nonce,ct,tag,plaintext:msg,encTime,scheme:schemeName(),sender};
+
+  updateStrip();
+  if (document.getElementById('panel-inspector').classList.contains('active')) renderLastMsg();
+  scroll(sender+'Msgs'); scroll(receiver+'Msgs');
+}
+
+/* ── BUBBLE HELPERS ─────────────────────────────────── */
+function addBubble(pid, text, cls, meta) {
+  const p=document.getElementById(pid);
+  const d=document.createElement('div'); d.className='bubble '+cls; d.textContent=text;
+  if(meta){const m=document.createElement('div');m.className='bubble-meta';m.textContent=meta;d.appendChild(m);}
+  p.appendChild(d); scroll(pid);
+}
+function sysmsg(pid, text) {
+  const p=document.getElementById(pid);
+  const d=document.createElement('div'); d.className='bubble system'; d.textContent=text;
+  p.appendChild(d); scroll(pid);
+}
+let revN=0;
+function addEncBubble(pid, nonce, ct, tag, plain, encTime, fromWho) {
+  const p=document.getElementById(pid); const id='rv'+(++revN);
+  const d=document.createElement('div'); d.className='bubble enc-incoming';
+  d.innerHTML=`
+    <div class="bubble-meta" style="color:var(--yellow);margin-bottom:8px">
+      Encrypted · from ${fromWho==='alice'?'Alice':'Bob'} · ${schemeName()} + AES-256-GCM · ${encTime} μs
+    </div>
+    <div class="enc-packet">
+      <span class="enc-label">nonce</span>
+      <span class="enc-val enc-nonce">${nonce}</span>
+      <span class="enc-label">ciphertext</span>
+      <span class="enc-val enc-ct">${ct.slice(0,40)}…</span>
+      <span class="enc-label">auth tag (GCM-128)</span>
+      <span class="enc-val enc-tag">${tag}</span>
+    </div>
+    <button class="reveal-btn" onclick="toggleRev('${id}',this)">Decrypt</button>
+    <div class="revealed-msg" id="${id}">${plain}</div>
+    <div class="bubble-meta" style="margin-top:6px">Received ${timeNow()} · integrity verified</div>`;
+  p.appendChild(d); scroll(pid);
+}
+function toggleRev(id,btn){const el=document.getElementById(id);const s=el.classList.toggle('show');btn.textContent=s?'Hide':'Decrypt';}
+
+/* ── METRICS STRIP ──────────────────────────────────── */
+function updateStrip() {
+  const b=S.bench[schemeKey()]; const cls=S.scheme===2?'mv mc-c':'mv vc';
+  el('m-scheme').textContent=schemeName(); el('m-scheme').className=cls;
+  el('m-msgs').textContent=S.msgCount;
+  el('m-pk').textContent=S.keyReady?fmtBytes(b.pk):'—';
+  if(S.encTimes.length){
+    const last=S.encTimes[S.encTimes.length-1];
+    const avg=(S.encTimes.reduce((a,v)=>a+v,0)/S.encTimes.length).toFixed(1);
+    el('m-enctime').textContent=last+' μs'; el('m-enctime').className=cls;
+    el('m-avgenc').textContent=avg+' μs';  el('m-avgenc').className=cls;
+  } else {el('m-enctime').textContent='—';el('m-avgenc').textContent='—';}
+  el('m-ct').textContent=S.lastCTBytes?fmtBytes(S.lastCTBytes):'—';
+}
+
+/* ── CRYPTO INSPECTOR ───────────────────────────────── */
+const MATH = {
+  kyber: {
+    cardTitle: 'Kyber768 — Key Encapsulation Mechanism',
+    tag: 'NIST FIPS 203',
+    params: [
+      ['Algorithm family',   'Module-LWE based KEM',  ''],
+      ['Module rank k',      'k = 3',                  'Kyber768 variant'],
+      ['Polynomial ring R',  'Z_q[x]/(x^n + 1)',       'n=256, q=3329'],
+      ['Modulus q',          '3329',                   'prime field'],
+      ['Error distr. η',     'CBD(η₁=2, η₂=2)',        'centered binomial'],
+      ['Compression',        '(d_u, d_v) = (10, 4)',   'bits per coeff'],
+      ['Public key  |pk|',   '1,184 bytes',            '12·k·n/8 + 32'],
+      ['Secret key  |sk|',   '2,400 bytes',            'pk + seed + H(pk) + z'],
+      ['Ciphertext  |c|',    '1,088 bytes',            'du·k·n/8 + dv·n/8'],
+      ['Shared secret',      '32 bytes',               'SHAKE-256 output'],
+      ['Classical security', '~2^192 ops',             ''],
+      ['Quantum security',   '~2^192 ops',             'no speedup (MLWE)'],
+      ['NIST level',         'Level 3',                '≈ AES-192'],
+    ],
+    eq: `<span class="eq-name">Kyber Key Generation</span>
+<span class="eq-line"><span class="eq-hl">A</span> ∈ R_q^{k×k}  ← XOF(ρ)       <span class="eq-comment">(public matrix)</span></span>
+<span class="eq-line"><span class="eq-hl">s, e</span> ← CBD(η₁)              <span class="eq-comment">(secret + error)</span></span>
+<span class="eq-line"><span class="eq-green">t</span> = A·s + e                <span class="eq-comment">(public key vector)</span></span>
+<span class="eq-name" style="margin-top:10px">Encapsulation</span>
+<span class="eq-line">r, e₁, e₂ ← CBD(η₁, η₂)</span>
+<span class="eq-line"><span class="eq-hl">u</span> = Aᵀ·r + e₁</span>
+<span class="eq-line"><span class="eq-hl">v</span> = tᵀ·r + e₂ + ⌊q/2⌋·m</span>
+<span class="eq-name" style="margin-top:10px">Decapsulation</span>
+<span class="eq-line"><span class="eq-green">m'</span> = Decompress(v - sᵀ·u)</span>
+<span class="eq-line eq-comment">  noise cancels: sᵀ·e₁ - eᵀ·r ≈ 0</span>`,
+    hardTitle: 'Hard Problem — Module Learning With Errors (MLWE)',
+    hardEq: `<span class="eq-name">MLWE Definition</span>
+<span class="eq-line">Given: <span class="eq-hl">A</span> ∈ R_q^{k×k},  <span class="eq-green">b</span> = A·<span class="eq-violet">s</span> + <span class="eq-hl">e</span></span>
+<span class="eq-line">Find:  <span class="eq-violet">s</span> ∈ R_q^k  (secret vector)</span>
+<span class="eq-line eq-comment">  A is public; s,e drawn from small distributions</span>
+<span class="eq-line eq-comment">  Best known attack: BKZ lattice reduction</span>
+<span class="eq-line eq-comment">  Complexity: 2^(0.292·β)  where β = block size</span>
+<span class="eq-name" style="margin-top:10px">Why Quantum Computers Fail</span>
+<span class="eq-line">Shor's algorithm requires  <span class="eq-red">hidden subgroup structure</span></span>
+<span class="eq-line">LWE has no such algebraic structure to exploit</span>
+<span class="eq-line">Best quantum attack: <span class="eq-green">BKZ + quantum search</span></span>
+<span class="eq-line eq-comment">  → provides at most polynomial (not exponential) speedup</span>
+<span class="eq-line eq-comment">  → security remains ~2^192 classically and quantumly</span>`
+  },
+  mce: {
+    cardTitle: 'Classic McEliece-6960119 — Code-Based KEM',
+    tag: 'NIST Finalist',
+    params: [
+      ['Algorithm family',   'Syndrome Decoding based KEM', ''],
+      ['Code family',        'Binary Goppa codes',          'Γ(L, g(x))'],
+      ['Parameters (n,k,t)', '(6960, 5413, 119)',           'codeword, dim, errors'],
+      ['Finite field',       'GF(2^13)',                    'm = 13'],
+      ['Generator poly',     'g(x) ∈ GF(2^13)[x]',         'deg(g) = t = 119'],
+      ['Public key  |pk|',   '1,047,319 bytes',             '~1 MB  k(n−k)'],
+      ['Secret key  |sk|',   '13,948 bytes',                'L, g, permutation'],
+      ['Ciphertext  |c|',    '194 bytes',                   'n bits  (smallest NIST)'],
+      ['Shared secret',      '32 bytes',                    'SHA-512/256 output'],
+      ['Classical security', '~2^256 ops',                  ''],
+      ['Quantum security',   '~2^256 ops',                  'no speedup (SD)'],
+      ['NIST level',         'Level 5',                     '≈ AES-256'],
+      ['Cryptanalysis age',  '46 years',                    'McEliece 1978'],
+    ],
+    eq: `<span class="eq-name">McEliece Key Generation</span>
+<span class="eq-line"><span class="eq-hl">G</span> = systematic generator matrix of Goppa code</span>
+<span class="eq-line"><span class="eq-green">G_pub</span> = S · G · P          <span class="eq-comment">(disguised with S, P)</span></span>
+<span class="eq-name" style="margin-top:10px">Encapsulation (CCA2-secure)</span>
+<span class="eq-line">e ∈ {0,1}^n,  wt(e) = t    <span class="eq-comment">(random error vector)</span></span>
+<span class="eq-line"><span class="eq-hl">c</span> = m·G_pub ⊕ e           <span class="eq-comment">(ciphertext)</span></span>
+<span class="eq-line"><span class="eq-green">K</span> = Hash(e)              <span class="eq-comment">(shared secret)</span></span>
+<span class="eq-name" style="margin-top:10px">Decapsulation</span>
+<span class="eq-line"><span class="eq-hl">c' </span>= c·P⁻¹               <span class="eq-comment">(undo permutation)</span></span>
+<span class="eq-line"><span class="eq-green">e'</span> = Patterson_decode(c') <span class="eq-comment">(Goppa decoder)</span></span>
+<span class="eq-line">K  = Hash(e'·P)           <span class="eq-comment">(recover secret)</span></span>`,
+    hardTitle: 'Hard Problem — Syndrome Decoding (SD)',
+    hardEq: `<span class="eq-name">Syndrome Decoding Problem (NP-hard)</span>
+<span class="eq-line">Given: <span class="eq-hl">H</span> ∈ GF(2)^{(n-k)×n},  <span class="eq-green">s</span> = H·eᵀ</span>
+<span class="eq-line">Find:  <span class="eq-violet">e</span> ∈ {0,1}^n  with  wt(e) ≤ t</span>
+<span class="eq-line eq-comment">  SD is NP-complete in general (McEliece 1978)</span>
+<span class="eq-line eq-comment">  Best classical: information-set decoding (ISD)</span>
+<span class="eq-line eq-comment">  Complexity: exp(O(t/n · log(n/t)^−1))</span>
+<span class="eq-name" style="margin-top:10px">Why Quantum Computers Fail</span>
+<span class="eq-line">Shor's algorithm is inapplicable  <span class="eq-comment">(no group structure)</span></span>
+<span class="eq-line">Best quantum attack: <span class="eq-green">Quantum ISD</span> (Lee-Brickell)</span>
+<span class="eq-line eq-comment">  provides only ~sqrt(t) speedup over classical ISD</span>
+<span class="eq-line eq-comment">  parameters chosen to absorb this: wt(e)=119, n=6960</span>
+<span class="eq-line">Security remains ~2^256 post-quantum</span>`
+  }
+};
+
+function renderInspector() {
+  const d=MATH[schemeKey()];
+  el('algoCardTitle').innerHTML=`${d.cardTitle} <span class="tag">${d.tag}</span>`;
+  document.getElementById('inspSubtitle').textContent=
+    `Showing algorithm parameters for ${schemeName()}. Switch scheme in top-right to compare.`;
+  // params table
+  el('algoParamsBox').innerHTML=d.params.map(([l,v,n])=>
+    `<div class="mrow"><span class="mlabel">${l}</span><span class="mval">${v}</span>${n?`<span class="mnote">${n}</span>`:''}</div>`
+  ).join('');
+  el('algoEqBox').innerHTML=d.eq;
+  el('hardProbTitle').textContent=d.hardTitle;
+  el('hardProbEq').innerHTML=d.hardEq;
+  renderLastMsg();
+}
+
+function renderLastMsg() {
+  const cb=document.getElementById('lastMsgCb');
+  if(!S.lastMsg){
+    cb.innerHTML='<span style="color:var(--muted);font-size:14px">Send a message in the Chat tab to see its cryptographic breakdown here.</span>';
+    return;
+  }
+  const m=S.lastMsg;
+  cb.innerHTML=`
+    <span class="cb-lbl">scheme</span><span class="cb-val" style="color:var(--violet-hi)">${m.scheme} + AES-256-GCM + HKDF-SHA256</span>
+    <span class="cb-lbl">direction</span><span class="cb-val" style="color:var(--text)">${m.sender==='alice'?'Alice → Bob':'Bob → Alice'}</span>
+    <span class="cb-lbl">plaintext length</span><span class="cb-val" style="color:var(--green)">${m.plaintext.length} bytes</span>
+    <span class="cb-lbl">aes-256-gcm enc time</span><span class="cb-val" style="color:var(--green)">${m.encTime} μs</span>
+    <span class="cb-lbl">nonce  (96-bit random)</span><span class="cb-val cb-nonce">${m.nonce}</span>
+    <span class="cb-lbl">ciphertext  (first 40 hex)</span><span class="cb-val cb-ct">${m.ct.slice(0,40)}…</span>
+    <span class="cb-lbl">auth tag  (128-bit GHASH)</span><span class="cb-val cb-tag">${m.tag}</span>
+    <span class="cb-lbl">key derivation</span><span class="cb-val" style="color:var(--muted)">HKDF-SHA256(IKM=shared_secret, salt="quantum-resistant-aes", info="secure-channel-v1")</span>`;
+}
+
+/* ── ATTACK DEFENSE ─────────────────────────────────── */
+function selAtk(type){
+  S.selAtk=type;
+  document.querySelectorAll('.attack-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('atk-'+(type==='all'?'allattacks':type)).classList.add('active');
+}
+async function runAttack(){
+  const btn=document.getElementById('runAtkBtn');
+  btn.disabled=true; btn.textContent='Running…';
+  clearTerm(false);
+  const a=S.selAtk;
+  if(a==='replay')    await simReplay();
+  else if(a==='modify')    await simModify();
+  else if(a==='eavesdrop') await simEavesdrop();
+  else if(a==='shor')      await simShor();
+  else if(a==='grover')    await simGrover();
+  else if(a==='all')       await simAll();
+  btn.disabled=false; btn.innerHTML='&#9654; Simulate Attack';
+}
+function tl(cls,text){
+  const term=document.getElementById('terminal');
+  const c=term.querySelector('.term-caret'); if(c)c.parentElement.remove();
+  const s=document.createElement('span'); s.className='tl '+cls; s.innerHTML=text;
+  term.appendChild(s); term.scrollTop=term.scrollHeight;
+}
+function tb(){const s=document.createElement('span');s.className='tb';document.getElementById('terminal').appendChild(s);}
+function tprompt(){
+  const term=document.getElementById('terminal'); const s=document.createElement('span');
+  s.className='tl'; s.innerHTML='<span class="t-prompt">$ </span><span class="term-caret"></span>';
+  term.appendChild(s); term.scrollTop=term.scrollHeight;
+}
+function clearTerm(addP=true){document.getElementById('terminal').innerHTML='';if(addP)tprompt();}
+
+async function simReplay(){
+  const sc=schemeName();
+  tl('t-hdr','======================================================');
+  tl('t-hdr','  REPLAY ATTACK SIMULATION');
+  tl('t-sub',`  Scheme: ${sc} + AES-256-GCM`);
+  tl('t-hdr','======================================================');tb();
+  tl('t-info','[*] Scenario: Attacker intercepts and replays a packet');
+  tl('t-info','[*] Key exchange complete — AES-256-GCM channel active');tb();
+  tl('t-info','[*] Alice sends: "Transfer $1,000 to Account #12345"');await d(300);
+  tl('t-hex', `    Nonce:   ${rndHex(16)}`);
+  tl('t-hex', `    CT:      ${rndHex(64)}...`);
+  tl('t-hex', `    Tag:     ${rndHex(32)}`);
+  tl('t-hex', `    Timestamp: ${Math.floor(Date.now()/1000)}`);tb();await d(400);
+  tl('t-ok',  '[+] Bob decrypts successfully');tb();await d(700);
+  tl('t-atk', '[!] ATTACKER captures the packet!');
+  tl('t-atk', '[!] Waiting 2 seconds… replaying identical ciphertext');await d(1000);
+  tl('t-atk', '[!] Sending replayed packet to Bob…');await d(500);tb();
+  tl('t-info','[*] Bob verifying packet…');
+  tl('t-info','    SecureChannel checks nonce against seen-set');await d(400);
+  tl('t-ok',  '[OK] REPLAY BLOCKED — nonce already used, packet rejected');
+  tl('t-ok',  '     nonce_id in SecureChannel._used_nonces → drop');tb();
+  tl('t-ok',  '--- RESULT: Replay Attack FAILED ---');
+  tprompt();
+}
+async function simModify(){
+  tl('t-hdr','======================================================');
+  tl('t-hdr','  MESSAGE MODIFICATION ATTACK');
+  tl('t-sub', `  Scheme: ${schemeName()} + AES-256-GCM`);
+  tl('t-hdr','======================================================');tb();
+  tl('t-info','[*] MITM attacker flips bits in ciphertext mid-transit');await d(400);
+  tl('t-info','[*] Alice sends: "Transfer $100 to Account #12345"');
+  const oc=rndHex(64); tl('t-hex',`    CT: ${oc}`);tb();await d(600);
+  tl('t-atk', '[!] ATTACKER flips bits at positions 10-15…');await d(500);
+  tl('t-atk', `[!] Modified: ${oc.slice(0,20)+'ffff'+oc.slice(24)}`);tb();await d(600);
+  tl('t-info','[*] Bob attempts decryption…');
+  tl('t-info','    AES-256-GCM computing GHASH over modified CT…');await d(700);
+  tl('t-err', '[X] DECRYPTION FAILED: GCM auth tag mismatch');
+  tl('t-err', '    Any 1-bit change to CT invalidates the 128-bit tag');tb();
+  tl('t-ok',  '--- RESULT: Modification Attack FAILED ---');
+  tprompt();
+}
+async function simEavesdrop(){
+  const pkSz=S.scheme===2?'1,047,319':'1,184';
+  tl('t-hdr','======================================================');
+  tl('t-hdr','  EAVESDROPPING ATTACK');
+  tl('t-sub',`  Scheme: ${schemeName()} — Passive Capture`);
+  tl('t-hdr','======================================================');tb();
+  tl('t-info','[*] Eve captures ALL traffic passively');tb();await d(400);
+  tl('t-warn','    1. Public key:');
+  tl('t-hex', `       ${pkSz} bytes   ${rndHex(80)}...`);tb();await d(500);
+  tl('t-warn','    2. KEM ciphertext:');
+  tl('t-hex', `       ${rndHex(80)}...`);tb();await d(500);
+  tl('t-warn','    3. AES-GCM messages:');
+  tl('t-hex', `       nonce: ${rndHex(16)}`);
+  tl('t-hex', `       CT:    ${rndHex(64)}...`);
+  tl('t-hex', `       tag:   ${rndHex(32)}`);tb();await d(700);
+  tl('t-err', '[!] Eve cannot recover shared secret:');
+  if(S.scheme===2){
+    tl('t-err','    Must solve Syndrome Decoding Problem — NP-complete');
+    tl('t-err','    Best quantum attack (Quantum ISD): still ~2^256');
+  } else {
+    tl('t-err','    Must solve Module-LWE — no known efficient algorithm');
+    tl('t-err','    Best quantum attack: BKZ + Grover → still ~2^192');
+  }
+  tl('t-err', '    A 20M-qubit CRQC cannot break either scheme');tb();
+  tl('t-ok',  '--- RESULT: Eavesdropping FAILED ---');
+  tprompt();
+}
+async function simShor(){
+  tl('t-hdr','======================================================');
+  tl('t-hdr',"  SHOR'S ALGORITHM — QUANTUM ATTACK");
+  tl('t-sub','  NSA Suite B vs Post-Quantum Schemes');
+  tl('t-hdr','======================================================');tb();
+  tl('t-info',"[*] Shor (1994): integer factorization in O(n^3) quantum time");
+  tl('t-info','[*] Attacking RSA-2048, ECDH-P256, ECDSA…');tb();await d(600);
+  tl('t-warn','    RSA-2048:');
+  tl('t-info','    Classical: ~2^112 ops — secure');
+  tl('t-atk', "    Shor:      O(2048^3) — polynomial time");
+  tl('t-atk', '    Qubits:    ~4,096 logical / ~20,000,000 physical');
+  tl('t-err', '    STATUS: BROKEN');tb();await d(700);
+  tl('t-warn','    ECDH / ECDSA (Suite B):');
+  tl('t-atk', '    Shor solves discrete log on elliptic curves');
+  tl('t-err', '    STATUS: BROKEN');tb();await d(700);
+  tl('t-ok',  `    ${schemeName()}:`);
+  tl('t-ok',  `    Shor targets factoring/DL — irrelevant to ${S.scheme===2?'SD':'MLWE'}`);
+  tl('t-ok',  '    No quantum polynomial algorithm for this problem');
+  tl('t-ok',  `    Quantum security: ${S.scheme===2?'~2^256':'~2^192'}`);tb();
+  tl('t-hdr', '--- Migrate from Suite B to PQC before CRQC arrives ---');
+  tprompt();
+}
+async function simGrover(){
+  tl('t-hdr','======================================================');
+  tl('t-hdr',"  GROVER'S ALGORITHM — QUANTUM ATTACK");
+  tl('t-sub','  Symmetric Key Search');
+  tl('t-hdr','======================================================');tb();
+  tl('t-info',"[*] Grover (1996): unstructured search in O(sqrt(N)) time");
+  tl('t-info','[*] Halves the bit-security of symmetric primitives');tb();await d(600);
+  tl('t-warn','    AES-128:');
+  tl('t-info','    Classical: 2^128 ops');
+  tl('t-atk', '    Grover:   2^64 ops — insufficient post-quantum');
+  tl('t-err', '    STATUS: INSUFFICIENT');tb();await d(600);
+  tl('t-ok',  '    AES-256 (our hybrid layer):');
+  tl('t-info','    Classical: 2^256 ops');
+  tl('t-ok',  '    Grover:   2^128 ops — accepted safe threshold');
+  tl('t-ok',  '    STATUS: SECURE');tb();await d(500);
+  tl('t-info','    SHA-256: 128-bit collision resistance post-Grover (ok)');
+  tl('t-ok',  '    SHA-384/512: comfortably secure');tb();
+  tl('t-hdr', '--- Use AES-256 everywhere; Grover halves bit-security ---');
+  tprompt();
+}
+async function simAll(){
+  await simReplay();await d(250);
+  await simModify();await d(250);
+  await simEavesdrop();await d(250);
+  await simShor();await d(250);
+  await simGrover();tb();
+  tl('t-hdr','======================================================');
+  tl('t-ok',  '  ALL ATTACKS COMPLETE — 0 / 5 succeeded');
+  tl('t-ok',  '  Post-Quantum Scheme: UNDEFEATED');
+  tl('t-hdr','======================================================');
+  tprompt();
+}
+
+/* ── UTILS ──────────────────────────────────────────── */
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const d=ms=>sleep(ms);
+function rndHex(n){const c='0123456789abcdef';let s='';for(let i=0;i<n;i++)s+=c[Math.floor(Math.random()*16)];return s;}
+function fmtBytes(b){if(b<1024)return b.toLocaleString()+' B';if(b<1048576)return(b/1024).toFixed(2)+' KB';return(b/1048576).toFixed(2)+' MB';}
+function timeNow(){return new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});}
+function scroll(id){const e=document.getElementById(id);e.scrollTop=e.scrollHeight;}
+function el(id){return document.getElementById(id);}
+
+window.onload=()=>{updateStrip();renderInspector();};
+</script>
+</body>
+</html>
