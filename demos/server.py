@@ -88,10 +88,11 @@ def run_server():
                     print_warning("Client disconnected.")
                     break
                 
-                # Parse encrypted payload
+                # Parse encrypted payload: nonce(12) + timestamp(8) + tag(16) + ciphertext
                 nonce = enc_data[:12]
-                tag = enc_data[12:28]
-                ct = enc_data[28:]
+                timestamp = enc_data[12:20]
+                tag = enc_data[20:36]
+                ct = enc_data[36:]
                 
                 # Display encrypted message
                 print_info(f"📩 Received encrypted message #{msg_count + 1}")
@@ -101,7 +102,7 @@ def run_server():
                 print(f"\n{hexdump(ct[:64], prefix='    ')}\n")
                 
                 # Decrypt and verify
-                msg = channel.decrypt_message({'nonce': nonce, 'tag': tag, 'ciphertext': ct})
+                msg = channel.decrypt_message({'nonce': nonce, 'tag': tag, 'ciphertext': ct, 'timestamp': timestamp})
                 
                 if "DECRYPTION FAILED" in msg:
                     print_attack(f"⚠️  ATTACK DETECTED: {msg}")
@@ -123,7 +124,7 @@ def run_server():
                     print_info("Sending quit signal...")
                 
                 encrypted = channel.encrypt_message(reply)
-                payload = encrypted['nonce'] + encrypted['tag'] + encrypted['ciphertext']
+                payload = encrypted['nonce'] + encrypted['timestamp'] + encrypted['tag'] + encrypted['ciphertext']
                 
                 print_info(f"📤 Sending encrypted reply")
                 print(colored(f"  Plaintext:  {reply}", Colors.GRAY))
