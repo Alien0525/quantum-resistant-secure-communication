@@ -3,14 +3,10 @@
  * ============
  * Extra Credit: C++ implementation of the quantum-resistant hybrid encryption core.
  *
- * This file implements the same protocol as src/base_protocol.py but in C++, using:
+ * This file implements the same protocol as base_protocol.py but in C++, using:
  *   - liboqs (Open Quantum Safe) for Kyber768 / McEliece KEM
  *   - OpenSSL 3.x EVP API for AES-256-GCM encryption
  *   - OpenSSL HKDF (HKDF-SHA256) for key derivation
- *
- * This is a standalone demonstration; the Python demo/dashboard remains the
- * primary deliverable.  This file exists to demonstrate the algorithm
- * implementation in C++ for the extra-credit requirement.
  *
  * Build (macOS with Homebrew liboqs + OpenSSL 3):
  *   brew install liboqs openssl@3
@@ -304,8 +300,8 @@ static void run_scheme(const char* kem_name, const std::string& message) {
    ───────────────────────────────────────────────────────────────────────── */
 int main(int argc, char* argv[]) {
     std::cout << "╔══════════════════════════════════════════════════════════════╗\n";
-    std::cout << "║   PQC C++ Core — Quantum-Resistant Hybrid Encryption Demo   ║\n";
-    std::cout << "║   Kyber768 & McEliece + AES-256-GCM | NYU CS6903 Project    ║\n";
+    std::cout << "║   PQC C++ Core — Quantum-Resistant Hybrid Encryption Demo    ║\n";
+    std::cout << "║   Kyber768 & McEliece + AES-256-GCM                          ║\n";
     std::cout << "╚══════════════════════════════════════════════════════════════╝\n";
 
     std::string scheme  = (argc > 1) ? argv[1] : "kyber";

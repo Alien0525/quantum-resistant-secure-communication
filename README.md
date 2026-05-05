@@ -1,354 +1,142 @@
-# Quantum-Resistant Secure Communication
+# PQCSecureChat
 
-[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
-[![Post-Quantum](https://img.shields.io/badge/crypto-post--quantum-brightgreen.svg)](https://csrc.nist.gov/projects/post-quantum-cryptography)
-
-A comprehensive implementation and comparison of **quantum-resistant secure communication protocols** using CRYSTALS-Kyber (lattice-based) and Classic McEliece (code-based) encryption schemes, with interactive demonstrations of attack prevention mechanisms.
+Quantum-resistant two-party secure communication.  
+**Zero fake implementations** — all cryptographic operations are real.
 
 ---
 
-## Project Overview
+## Project Requirements Coverage
 
-This project implements two NIST-standardized post-quantum cryptographic schemes to demonstrate secure communication that remains protected even against attackers with quantum computers. It includes:
-
-- Full protocol implementations with AES-256-GCM hybrid encryption
-- Attack demonstrations (replay, modification, eavesdropping)
-- Interactive visualizations with colored terminal output and hex dumps
-- Live performance benchmarking with web dashboard
-- Client-server chat demo showing real encrypted communication
-
-### Security Goals
-
-Protection against:
-- **Eavesdropping** - Even with quantum computers running Shor's algorithm
-- **Message modification** - Authenticated encryption with GCM
-- **Replay attacks** - Nonce tracking and timestamp validation
-- **Future quantum threats** - NIST-approved post-quantum algorithms
-
----
-
-## Implemented Schemes
-
-### Scheme 1: CRYSTALS-Kyber768 (Lattice-based)
-- **Type:** Module-LWE based Key Encapsulation Mechanism
-- **Security Level:** NIST Level 3 (approx. AES-192)
-- **Status:** NIST Standardized (2024)
-- **Public Key:** ~1.2 KB
-- **Ciphertext:** ~1.1 KB
-- **Speed:** Very Fast (~0.5ms total)
-
-### Scheme 2: Classic McEliece (Code-based)
-- **Type:** Syndrome Decoding based encryption
-- **Security Level:** NIST Level 5 (approx. AES-256)
-- **Status:** NIST Finalist
-- **Public Key:** ~1 MB
-- **Ciphertext:** ~226 bytes
-- **Speed:** Fast (~50ms key generation)
+| Requirement | How it's met |
+|---|---|
+| Two PQC schemes (one lattice, one code-based) | **Kyber768** (MLWE lattice) + **Classic McEliece-6960119** (code-based) |
+| Data confidentiality | AES-256-GCM with HKDF-SHA256 derived key |
+| Integrity attack detection | GCM authentication tag — any tampered bit fails decryption |
+| Replay attack detection | Timestamp AAD + nonce tracking in SecureChannel |
+| Key length comparison | See dashboard `/api/benchmark/full` — PK: 1.18 KB vs ~1 MB |
+| Performance comparison | Chat UI metrics strip + dashboard charts |
+| C++ extra credit | `cpp_implementation_extra/pqc_core.cpp` — identical protocol in C++ |
 
 ---
 
 ## Architecture
 
 ```
-+--------------+                                    +--------------+
-|    Alice     |                                    |     Bob      |
-|  (Sender)    |                                    | (Receiver)   |
-+--------------+                                    +--------------+
-       |                                                  |
-       |  1. Bob generates Kyber/McEliece keypair         |
-       |<-------------------------------------------------|
-       |                  Public Key                      |
-       |                                                  |
-       |  2. Alice encapsulates shared secret             |
-       |------------------------------------------------->|
-       |              KEM Ciphertext                      |
-       |                                                  |
-       |  3. Both derive AES-256 key from shared secret   |
-       |                                                  |
-       |  4. Alice encrypts message with AES-GCM          |
-       |------------------------------------------------->|
-       |  Encrypted Message + Auth Tag + Nonce            |
-       |                                                  |
-       |  5. Bob decrypts and verifies                    |
-       |<-------------------------------------------------|
-       |            Plaintext Message                     |
-       |                                                  |
-```
-
----
-
-## Project Structure
-
-```
-quantum-resistant-secure-communication/
-|
-+-- src/
-|   +-- __init__.py
-|   +-- base_protocol.py       # Base class eliminating code duplication
-|   +-- secure_channel.py      # AES-256-GCM with replay protection
-|   +-- utils.py               # Visualization, colors, formatting utilities
-|
-+-- demos/
-|   +-- interactive_demo.py    # Interactive menu with attack simulations
-|   +-- server.py              # Chat server with hex dump visualization
-|   +-- client.py              # Chat client with colored output
-|
-+-- analysis/
-|   +-- live_benchmark.py      # Performance benchmarking tool
-|   +-- quantum_attack_analysis.md
-|
-+-- docs/
-|   +-- dashboard.html         # Interactive web dashboard
-|   +-- scheme_selection.md
-|   +-- benchmark_results.json # Generated by live_benchmark.py
-|
-+-- tests/
-|   +-- __init__.py
-|   +-- test_installation.py
-|
-+-- requirements.txt
-+-- README.md
+app.py                  Flask API backend (real KEM + AES-256-GCM)
+chat_ui.html            Chat frontend  → calls API endpoints
+dashboard.html          Benchmark dashboard → /api/benchmark/full
+secure_channel.py       AES-256-GCM channel (pycryptodome)
+base_protocol.py        KEM protocol base class (requires liboqs)
+utils.py                Print helpers
+cpp_implementation_extra/
+  pqc_core.cpp          C++ implementation (extra credit)
+  Makefile              Auto-detects macOS / Linux
+  README.md             C++ build instructions
 ```
 
 ---
 
 ## Quick Start
 
-### Installation
-
 ```bash
-# 1. Clone the repository
-git clone https://github.com/yourusername/quantum-resistant-secure-communication.git
-cd quantum-resistant-secure-communication
+# 1. Install Python deps
+pip install flask cryptography pycryptodome
 
-# 2. Create virtual environment
-python3 -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-
-# 3. Install liboqs (macOS with Homebrew)
+# 2. Install real PQC (Kyber768 / McEliece):
+# macOS (Homebrew):
 brew install liboqs
+pip install liboqs-python
 
-# 4. Set environment variable
-export LIBOQS_INSTALL_PATH=/opt/homebrew
+# Ubuntu/Debian:
+sudo apt install liboqs-dev
+pip install liboqs-python
 
-# 5. Install Python dependencies
-pip install -r requirements.txt
+# 3. Start backend (default port 5001 — macOS reserves 5000 for AirPlay)
+python app.py
 
-# 6. Verify installation
-python tests/test_installation.py
+# Optional: run on a different port
+python app.py --port 5000
+
+# 4. Open frontends in browser
+open chat_ui.html
+open dashboard.html
 ```
+
+> **Note on port 5001**: macOS Monterey and later reserve port 5000 for AirPlay Receiver,
+> so the backend defaults to **5001**. Both HTML files are pre-configured for `localhost:5001`.
+> To use port 5000, run `python app.py --port 5000` and update `API_BASE` in both HTML files.
 
 ---
 
-## Usage
+## API Endpoints
 
-### 1. Interactive Demo (Recommended Start)
+| Endpoint | Method | Description |
+|---|---|---|
+| `/api/status` | GET | Health check + liboqs availability |
+| `/api/keygen` | POST | Generate KEM keypair -> session_id + public_key |
+| `/api/encapsulate` | POST | Sender encapsulates shared secret |
+| `/api/decapsulate` | POST | Receiver decapsulates shared secret |
+| `/api/encrypt` | POST | AES-256-GCM encrypt a message |
+| `/api/decrypt` | POST | AES-256-GCM decrypt + verify |
+| `/api/full_exchange` | POST | Complete KEX + encrypt + decrypt in one call |
+| `/api/benchmark` | POST | Benchmark a single scheme |
+| `/api/benchmark/full` | POST | Benchmark both schemes (dashboard) |
+
+---
+
+## Crypto Stack
+
+- **KEM**: Kyber768 / Classic-McEliece-6960119 via liboqs (fallback: X25519 ECDH when liboqs absent)
+- **Symmetric**: AES-256-GCM (authenticated encryption — confidentiality + integrity)
+- **KDF**: HKDF-SHA256 (shared secret -> 256-bit AES key)
+- **Replay protection**: 64-bit timestamp as GCM AAD + nonce tracking (60s window)
+
+### Attack Coverage
+
+| Attack | Defense |
+|---|---|
+| Eavesdropping | KEM + AES-256-GCM: ciphertext reveals nothing without the private key |
+| Data modification | GCM auth tag: any 1-bit change causes authentication failure |
+| Replay | Timestamp AAD validated against 60s window; nonce reuse detected |
+
+---
+
+## C++ Extra Credit
 
 ```bash
-python demos/interactive_demo.py
+cd cpp_implementation_extra
+
+# macOS
+brew install liboqs openssl@3
+make
+
+# Ubuntu
+sudo apt install liboqs-dev libssl-dev build-essential
+make
+
+# Run
+./pqc_core kyber    "Transfer $1000 to Account #12345"
+./pqc_core mceliece "Transfer $1000 to Account #12345"
+./pqc_core both     "Transfer $1000 to Account #12345"
 ```
 
-**Features:**
-- Normal secure communication comparison
-- Replay attack prevention demo
-- Message modification attack demo
-- Eavesdropping protection visualization
-- Quantum threat analysis
-
-**Screenshot:**
-```
-+===================================================================+
-|                                                                   |
-|     ██████╗  ██████╗  ██████╗    ███████╗███████╗ ██████╗         |
-|     ██╔══██╗██╔═══██╗██╔════╝    ██╔════╝██╔════╝██╔════╝         |
-|     ██████╔╝██║   ██║██║         ███████╗█████╗  ██║              |
-|     ██╔═══╝ ██║▄▄ ██║██║         ╚════██║██╔══╝  ██║              |
-|     ██║     ╚██████╔╝╚██████╗    ███████║███████╗╚██████╗         |
-|     ╚═╝      ╚══▀▀═╝  ╚═════╝    ╚══════╝╚══════╝ ╚═════╝         |
-|                                                                   |
-|         PQC SEC - Quantum-Resistant Secure Communication System   |
-+===================================================================+
-
-Select a demonstration:
-
-  1. Normal Secure Communication (Kyber vs McEliece)
-  2. Replay Attack Prevention
-  3. Message Modification Attack Prevention
-  4. Eavesdropping Protection
-  5. Quantum Threat Analysis
-  6. Run All Demonstrations
-  0. Exit
-```
-
-### 2. Live Client-Server Chat
-
-**Terminal 1 - Server (Alice):**
-```bash
-python demos/server.py
-```
-
-**Terminal 2 - Client (Bob):**
-```bash
-python demos/client.py
-```
-
-**Features:**
-- Full end-to-end encryption
-- Hex dump of all ciphertexts
-- Colored terminal output
-- Real-time authentication verification
-
-### 3. Performance Benchmark
-
-```bash
-python analysis/live_benchmark.py
-```
-
-Then open the interactive dashboard:
-```bash
-open docs/dashboard.html
-# or
-firefox docs/dashboard.html
-```
-
-**Dashboard Features:**
-- Live charts (size comparison, performance)
-- Logarithmic scale visualization
-- Refresh button for re-benchmarking
-- Responsive design
+The C++ implementation uses:
+- liboqs C API (OQS_KEM_keypair, OQS_KEM_encaps, OQS_KEM_decaps)
+- OpenSSL 3.x EVP API for AES-256-GCM
+- OpenSSL EVP_KDF HKDF with identical salt/info to Python — cross-compatible keys
+- Modification attack demo: bit-flip triggers GCM authentication failure
 
 ---
 
-## Performance Comparison
+## Scheme Comparison
 
-| Metric | Kyber768 | McEliece | Winner |
-|--------|----------|----------|--------|
-| **Public Key** | 1.2 KB | 1 MB | Kyber |
-| **Secret Key** | 2.4 KB | 13.6 KB | Kyber |
-| **Ciphertext** | 1.1 KB | 226 B | McEliece |
-| **Key Generation** | 0.5 ms | 50 ms | Kyber (100x faster) |
-| **Encapsulation** | 0.3 ms | 1 ms | Kyber (3x faster) |
-| **Decapsulation** | 0.4 ms | 2 ms | Kyber (5x faster) |
-| **Security Level** | NIST-3 | NIST-5 | McEliece |
-
-### Key Insights
-
-**Kyber wins on:**
-- Speed (100x faster key generation)
-- Key sizes (800x smaller public key)
-- Overall efficiency
-
-**McEliece wins on:**
-- Ciphertext size (5x smaller)
-- Security level (NIST Level 5)
-- Maturity (studied since 1978)
-
----
-
-## Quantum Attack Analysis
-
-### Classical Cryptography (RSA-2048)
-
-| Attack Type | Operations | Status |
-|-------------|-----------|--------|
-| Classical | ~2^112 | Secure |
-| Quantum (Shor) | ~2^30 | BROKEN |
-
-**Quantum Requirements to Break RSA-2048:**
-- **Logical Qubits:** ~4,000
-- **Physical Qubits:** ~20,000,000 (with error correction)
-- **Timeline:** 10-20 years
-
-### Post-Quantum Cryptography
-
-| Scheme | Classical | Quantum | Hard Problem |
-|--------|-----------|---------|--------------|
-| **Kyber** | ~2^192 | ~2^192 | Module-LWE (no quantum speedup) |
-| **McEliece** | ~2^256 | ~2^256 | Syndrome Decoding (remains hard) |
-
----
-
-## Visual Features
-
-### Terminal Output Examples
-
-**Hex Dump Visualization:**
-```
-[i] Sender encrypted message with AES-256-GCM
-    Plaintext:  42 bytes
-    Ciphertext: 42 bytes
-
-    0000  8f 3a 2b 7c 9d 4e 1f 6a 5b 8c 2d 3e 7f 4a 9b 1c  |.:+|.N.j[.->.J..|
-    0010  6d 5e 8f 2a 4b 7c 9d 3e 1f 5a 8b 6c 2d 4e 9f 7a  |m^.*K|.>.Z.l-N.z|
-    0020  3b 8c 1d 5e 9f 4a 7b 2c 6d 8e 1f 5a 9c 3b 7d 4e  |;..^.J{,m..Z.;}N|
-```
-
-**Colored Attack Detection:**
-```
-[!] ATTACKER: Attempting to modify ciphertext...
-[!] Flipping bits 10-15 in ciphertext...
-[OK] Modification attack BLOCKED! Authentication tag verification failed
-```
-
----
-
-## Testing
-
-```bash
-# Run all tests
-pytest tests/ -v
-
-# Test installation
-python tests/test_installation.py
-
-# Verify both schemes work
-python -c "from src.base_protocol import KyberProtocol; KyberProtocol().run_secure_communication('test')"
-```
-
----
-
-## Educational Content
-
-### Attack Demonstrations
-
-1. **Replay Attack Prevention**
-   - Shows nonce reuse detection
-   - Timestamp validation (60-second window)
-   - Visual demonstration of blocked replay
-
-2. **Modification Attack Prevention**
-   - Bit-flipping demonstration
-   - GCM authentication tag verification
-   - Shows how tampering is detected
-
-3. **Eavesdropping Protection**
-   - Displays what attacker can see (ciphertexts)
-   - Explains quantum-resistant properties
-   - Shows infeasibility of brute force
-
----
-
-## References
-
-### Standards & Documentation
-- [NIST PQC Standardization](https://csrc.nist.gov/projects/post-quantum-cryptography)
-- [CRYSTALS-Kyber](https://pq-crystals.org/kyber/)
-- [Classic McEliece](https://classic.mceliece.org/)
-- [Open Quantum Safe](https://openquantumsafe.org/)
-
-### Research Papers
-- Kyber: [Bos et al., 2018](https://pq-crystals.org/kyber/data/kyber-specification-round3-20210804.pdf)
-- McEliece: [McEliece, 1978](https://tmo.jpl.nasa.gov/progress_report2/42-44/44N.PDF)
-- Shor's Algorithm: [Shor, 1994](https://arxiv.org/abs/quant-ph/9508027)
-
----
-
-## Future Enhancements
-
-- Add Dilithium signatures for authentication
-- Implement hybrid classical+PQ schemes
-- WebSocket-based live chat demo
-- Mobile app integration
-- Docker containerization
-- Performance profiling tools
-- Additional PQC schemes (SPHINCS+, Falcon)
+| Property | Kyber768 | Classic McEliece-6960119 |
+|---|---|---|
+| Family | Lattice (MLWE) | Code-based |
+| NIST Level | 3 (approx AES-192) | 5 (approx AES-256) |
+| Public Key | 1,184 bytes | ~1.04 MB |
+| Secret Key | 2,400 bytes | 13,948 bytes |
+| Ciphertext | 1,088 bytes | 194 bytes |
+| Keygen | ~0.1 ms | ~1,000-5,000 ms |
+| Encap | ~0.1 ms | ~0.5 ms |
+| Decap | ~0.1 ms | ~0.5 ms |

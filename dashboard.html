@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PQC Analysis Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+/* ── NYU VIOLET THEME — zero pink, high contrast ─────────────────── */
+:root {
+  --bg:        #09090f;
+  --surface:   #111119;
+  --surface2:  #181826;
+  --border:    #252538;
+  --border2:   #333350;
+  --kyber:     #3b82f6;     /* blue for Kyber instead of violet */
+  --khi:       #60a5fa;     /* lighter blue for Kyber */
+  --ksoft:     rgba(59,130,246,.25);
+  --kmid:      rgba(96,165,250,.18);
+  --violet:    #57068c;     /* keep for UI elements */
+  --vhi:       #8900e1;
+  --vsoft:     rgba(87,6,140,.25);
+  --vmid:      rgba(137,0,225,.18);
+  --mce:       #22b0c6;        /* cyan-teal — NO pink */
+  --mce-soft:  rgba(34,176,198,.2);
+  --green:     #27c47a;
+  --red:       #e05252;
+  --yellow:    #e8a020;
+  --cyan:      #38bdf8;
+  --text:      #f0f0fa;
+  --muted:     #a0a0d0;
+  --dim:       #6666a0;
+  --mono:      'Cascadia Code','JetBrains Mono','Fira Mono','Courier New',monospace;
+  --radius:    10px;
+  --tr:        0.18s ease;
+}
+*,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-size: 16px;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+/* ── NAV ─────────────────────────────────────────────────────────── */
+.nav {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 11px 24px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.logo { font-size: 18px; font-weight: 800; letter-spacing: -.5px; }
+.logo span { color: var(--vhi); }
+.nav-sub { font-size: 13px; color: var(--muted); }
+.api-status {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-family: var(--mono);
+}
+.api-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dim); transition: var(--tr); }
+.api-dot.ok  { background: var(--green); box-shadow: 0 0 6px var(--green); }
+.api-dot.err { background: var(--red); }
+.api-dot.loading { background: var(--yellow); animation: blink .8s infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+.api-txt { color: var(--muted); }
+.chat-link {
+  font-size: 12.5px; color: var(--muted); text-decoration: none;
+  padding: 5px 10px; border: 1px solid var(--border); border-radius: 7px;
+  transition: var(--tr);
+}
+.chat-link:hover { border-color: var(--vhi); color: var(--vhi); }
+
+/* ── PAGE CONTENT ─────────────────────────────────────────────────── */
+.page { max-width: 1280px; margin: 0 auto; padding: 28px 24px 60px; }
+
+/* ── RUN CONTROLS ─────────────────────────────────────────────────── */
+.run-bar {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 22px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+.run-bar h2 { font-size: 16px; font-weight: 700; flex-shrink: 0; }
+.iter-group { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--muted); }
+.iter-input {
+  width: 64px; padding: 5px 9px;
+  background: var(--surface2); border: 1.5px solid var(--border);
+  border-radius: 7px; color: var(--text); font-size: 14px;
+  font-family: var(--mono); text-align: center; outline: none;
+  transition: var(--tr);
+}
+.iter-input:focus { border-color: var(--vhi); }
+.scheme-label {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 13px; font-weight: 600;
+  padding: 4px 11px; border-radius: 20px;
+}
+.scheme-label.kyber { background: var(--ksoft); color: var(--kyber); border: 1px solid var(--kyber); }
+.scheme-label.mce   { background: var(--mce-soft); color: var(--mce); border: 1px solid var(--mce); }
+.run-btn {
+  margin-left: auto;
+  padding: 10px 28px;
+  background: linear-gradient(135deg, var(--violet), var(--vhi));
+  color: #fff; border: none; border-radius: 9px;
+  cursor: pointer; font-size: 14px; font-weight: 700;
+  transition: var(--tr); white-space: nowrap;
+}
+.run-btn:hover:not(:disabled) { opacity: .85; transform: translateY(-1px); }
+.run-btn:disabled { opacity: .38; cursor: not-allowed; transform: none; }
+.progress-wrap { width: 100%; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; display: none; }
+.progress-bar  { height: 100%; background: var(--vhi); border-radius: 2px; transition: width .3s ease; width: 0; }
+
+/* ── STATUS BANNER ─────────────────────────────────────────────────── */
+#statusBanner {
+  display: none;
+  padding: 11px 18px; border-radius: 8px; margin-bottom: 20px;
+  font-size: 14px; font-family: var(--mono);
+}
+#statusBanner.err  { background: rgba(224,82,82,.1); border: 1px solid rgba(224,82,82,.3); color: #ff8080; }
+#statusBanner.warn { background: rgba(232,160,32,.1); border: 1px solid rgba(232,160,32,.3); color: var(--yellow); }
+#statusBanner.info { background: rgba(39,196,122,.1); border: 1px solid rgba(39,196,122,.3); color: var(--green); }
+
+/* ── INSIGHT TILES ─────────────────────────────────────────────────── */
+.tiles { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; margin-bottom: 24px; }
+@media(max-width:900px) { .tiles { grid-template-columns: 1fr 1fr; } }
+.tile {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px 18px;
+}
+.tile-lbl { font-size: 11.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 5px; }
+.tile-val  { font-size: 26px; font-weight: 800; font-family: var(--mono); }
+.tile-sub  { font-size: 12px; color: var(--muted); margin-top: 3px; }
+.tile-val.vc  { color: var(--kyber); }
+.tile-val.mc  { color: var(--mce); }
+.tile-val.gc  { color: var(--green); }
+.tile-val.yc  { color: var(--yellow); }
+
+/* ── SECTION HEADER ─────────────────────────────────────────────────── */
+.section-hdr {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 14px;
+}
+.section-hdr h2 { font-size: 16px; font-weight: 700; }
+.section-hdr .badge {
+  font-size: 11px; padding: 2px 8px; border-radius: 10px;
+  background: var(--vsoft); color: var(--vhi); border: 1px solid var(--vhi);
+}
+.real-badge {
+  font-size: 11px; padding: 2px 8px; border-radius: 10px;
+  background: rgba(39,196,122,.12); color: var(--green);
+  border: 1px solid rgba(39,196,122,.3); font-family: var(--mono);
+  margin-left: auto;
+}
+
+/* ── CHARTS GRID ─────────────────────────────────────────────────────── */
+.charts-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 24px; }
+@media(max-width:900px) { .charts-2col { grid-template-columns: 1fr; } }
+.chart-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 18px;
+}
+.chart-card h3 { font-size: 14px; font-weight: 600; margin-bottom: 14px; color: var(--text); }
+.chart-canvas-wrap { position: relative; height: 220px; }
+
+/* ── SIZE BARS ─────────────────────────────────────────────────────── */
+.size-table { width: 100%; border-collapse: collapse; }
+.size-table th {
+  text-align: left; font-size: 11.5px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: .7px;
+  color: var(--muted); padding: 6px 10px; border-bottom: 1px solid var(--border);
+}
+.size-table td { padding: 10px 10px; border-bottom: 1px solid rgba(255,255,255,.04); vertical-align: middle; }
+.size-table tr:last-child td { border-bottom: none; }
+.sz-lbl { font-size: 13.5px; color: var(--text); font-weight: 500; }
+.sz-bar-wrap { display: flex; align-items: center; gap: 10px; }
+.sz-bar-bg { flex: 1; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+.sz-bar { height: 100%; border-radius: 4px; transition: width .5s ease; }
+.sz-bar.k { background: var(--kyber); }
+.sz-bar.m { background: var(--mce); }
+.sz-num { font-size: 13px; font-family: var(--mono); font-weight: 600; min-width: 85px; text-align: right; }
+.sz-num.k { color: var(--kyber); }
+.sz-num.m { color: var(--mce); }
+
+/* ── PERF TABLE ─────────────────────────────────────────────────────── */
+.perf-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 18px; margin-bottom: 24px;
+}
+.perf-table { width: 100%; border-collapse: collapse; }
+.perf-table th {
+  text-align: left; font-size: 11.5px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: .7px;
+  color: var(--muted); padding: 7px 12px; border-bottom: 1px solid var(--border);
+}
+.perf-table td { padding: 11px 12px; border-bottom: 1px solid rgba(255,255,255,.04); font-size: 14px; }
+.perf-table tr:last-child td { border-bottom: none; }
+.perf-table td:first-child { font-weight: 600; color: var(--text); }
+.k-num { font-family: var(--mono); color: var(--kyber); font-weight: 700; }
+.m-num { font-family: var(--mono); color: var(--mce); font-weight: 700; }
+.ratio  { font-family: var(--mono); color: var(--yellow); font-size: 12.5px; }
+
+/* ── SECURITY TABLE ─────────────────────────────────────────────────── */
+.sec-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 24px; }
+@media(max-width:900px) { .sec-grid { grid-template-columns: 1fr; } }
+.sec-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 18px;
+}
+.sec-card-title {
+  font-size: 16px; font-weight: 700; margin-bottom: 4px;
+  display: flex; align-items: center; gap: 8px;
+}
+.sec-card-title .dot { width: 10px; height: 10px; border-radius: 50%; }
+.sec-card-title .dot.k { background: var(--kyber); }
+.sec-card-title .dot.m { background: var(--mce); }
+.sec-sub { font-size: 12.5px; color: var(--muted); margin-bottom: 16px; }
+.sec-row { display: flex; justify-content: space-between; align-items: baseline; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.04); font-size: 13.5px; }
+.sec-row:last-child { border-bottom: none; }
+.sec-prop { color: var(--muted); }
+.sec-val  { font-weight: 600; font-family: var(--mono); font-size: 13px; }
+.sec-val.k { color: var(--kyber); }
+.sec-val.m { color: var(--mce); }
+.sec-val.g { color: var(--green); }
+
+/* ── INSIGHTS & CONCLUSIONS ─────────────────────────────────────────── */
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px; margin-bottom: 24px;
+}
+.card-title {
+  font-size: 17px; font-weight: 700; margin-bottom: 16px;
+  padding-bottom: 10px; border-bottom: 1px solid var(--border);
+}
+.insight-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px;
+}
+@media(max-width:900px) { .insight-grid { grid-template-columns: 1fr; } }
+.ic {
+  background: var(--surface2); border: 1.5px solid var(--border2);
+  border-radius: 9px; padding: 15px;
+}
+.ic.good  { border-left: 3px solid var(--green); }
+.ic.warn  { border-left: 3px solid var(--yellow); }
+.ic.bad   { border-left: 3px solid var(--red); }
+.ic.info  { border-left: 3px solid var(--cyan); }
+.ic-title {
+  font-size: 14.5px; font-weight: 700; margin-bottom: 8px; color: var(--text);
+}
+.ic-body {
+  font-size: 14px; line-height: 1.6; color: var(--muted);
+}
+.ic-body strong { color: var(--text); font-weight: 600; }
+
+.conc-list { display: flex; flex-direction: column; gap: 16px; }
+.conc-item {
+  display: flex; gap: 14px; background: var(--surface2);
+  border: 1px solid var(--border2); border-radius: 9px; padding: 16px;
+}
+.conc-num {
+  flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%;
+  background: var(--violet); color: #fff; display: flex;
+  align-items: center; justify-content: center; font-size: 17px;
+  font-weight: 800;
+}
+.c-title {
+  font-size: 15px; font-weight: 700; margin-bottom: 8px; color: var(--text);
+}
+.c-body {
+  font-size: 14px; line-height: 1.6; color: var(--muted);
+}
+.c-body strong { color: var(--text); font-weight: 600; }
+
+
+/* ── PLACEHOLDER ─────────────────────────────────────────────────────── */
+.placeholder {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 60px 20px; color: var(--muted); font-size: 14px; gap: 10px;
+  text-align: center;
+}
+.placeholder .ph-icon { font-size: 38px; opacity: .5; }
+.placeholder .ph-hint { font-size: 12.5px; color: var(--dim); }
+
+/* ── LOADING OVERLAY ─────────────────────────────────────────────────── */
+.loading-spinner {
+  display: inline-block; width: 16px; height: 16px;
+  border: 2.5px solid rgba(137,0,225,.3); border-top-color: var(--vhi);
+  border-radius: 50%; animation: spin .6s linear infinite;
+  margin-right: 8px; vertical-align: middle;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── FOOTER ─────────────────────────────────────────────────────── */
+.footer {
+  border-top: 1px solid var(--border); padding: 18px 24px;
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  font-size: 12px; color: var(--dim);
+  max-width: 1280px; margin: 0 auto;
+}
+.footer strong { color: var(--muted); }
+.backend-tag {
+  margin-left: auto; font-size: 11.5px; font-family: var(--mono);
+  padding: 3px 9px; border-radius: 4px;
+}
+.backend-tag.real { background: rgba(39,196,122,.1); color: var(--green); border: 1px solid rgba(39,196,122,.3); }
+.backend-tag.fallback { background: rgba(232,160,32,.1); color: var(--yellow); border: 1px solid rgba(232,160,32,.3); }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="logo">PQC<span>Dash</span></div>
+  <div class="nav-sub">Quantum-Resistant Cryptography — Analysis Dashboard</div>
+  <div class="api-status">
+    <div class="api-dot loading" id="apiDot"></div>
+    <span class="api-txt" id="apiTxt">connecting…</span>
+  </div>
+  <a href="chat_ui.html" class="chat-link">← Chat UI</a>
+</nav>
+
+<div class="page">
+
+  <!-- RUN CONTROLS -->
+  <div class="run-bar">
+    <h2>Benchmark Configuration</h2>
+    <div class="iter-group">
+      <span class="scheme-label kyber">Kyber768</span>
+      <input class="iter-input" id="kyberIter" type="number" value="10" min="1" max="50"> iterations
+    </div>
+    <div class="iter-group">
+      <span class="scheme-label mce">McEliece</span>
+      <input class="iter-input" id="mceIter" type="number" value="10" min="1" max="50"> iterations
+    </div>
+    <button class="run-btn" id="runBtn" onclick="runBenchmark()">▶ Run Benchmark</button>
+    <div class="progress-wrap" id="progressWrap" style="width:100%">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+  </div>
+
+  <!-- STATUS BANNER -->
+  <div id="statusBanner"></div>
+
+  <!-- INSIGHT TILES -->
+  <div class="tiles" id="tiles">
+    <div class="tile">
+      <div class="tile-lbl">Kyber — Total Time</div>
+      <div class="tile-val vc" id="t-kyber-total">—</div>
+      <div class="tile-sub">keygen + encap + decap</div>
+    </div>
+    <div class="tile">
+      <div class="tile-lbl">McEliece — Total Time</div>
+      <div class="tile-val mc" id="t-mce-total">—</div>
+      <div class="tile-sub">keygen + encap + decap</div>
+    </div>
+    <div class="tile">
+      <div class="tile-lbl">Kyber PK Size</div>
+      <div class="tile-val gc" id="t-kyber-pk">—</div>
+      <div class="tile-sub">vs McEliece ~1 MB</div>
+    </div>
+    <div class="tile">
+      <div class="tile-lbl">Speed Advantage</div>
+      <div class="tile-val yc" id="t-speed-ratio">—</div>
+      <div class="tile-sub">Kyber vs McEliece</div>
+    </div>
+  </div>
+
+  <!-- CHARTS -->
+  <div class="section-hdr">
+    <h2>Performance &amp; Size Comparison</h2>
+    <span class="badge">Measurements</span>
+    <span class="real-badge" id="realBadge" style="display:none">⬤ live data</span>
+  </div>
+
+  <div class="charts-2col" id="chartsArea">
+    <div class="chart-card">
+      <h3>⏱ Operation Timing (ms avg)</h3>
+      <div class="chart-canvas-wrap">
+        <canvas id="timeChart"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <h3>📦 Key/Ciphertext Sizes (bytes)</h3>
+      <div class="chart-canvas-wrap">
+        <canvas id="sizeChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIZE BREAKDOWN BAR TABLE -->
+  <div class="perf-card" style="margin-bottom:18px">
+    <div class="section-hdr" style="margin-bottom:14px">
+      <h2>Size Breakdown</h2>
+    </div>
+    <div id="sizeBarArea">
+      <div class="placeholder"><div class="ph-icon">📐</div><div>Run benchmark to see sizes</div></div>
+    </div>
+  </div>
+
+  <!-- PERFORMANCE TABLE -->
+  <div class="perf-card">
+    <div class="section-hdr" style="margin-bottom:14px">
+      <h2>Detailed Performance Table</h2>
+    </div>
+    <div id="perfTableArea">
+      <div class="placeholder"><div class="ph-icon">📊</div><div>Run benchmark to see timings</div></div>
+    </div>
+  </div>
+
+  <!-- SECURITY PROPERTIES -->
+  <div class="section-hdr" style="margin-top:24px">
+    <h2>Security Properties</h2>
+  </div>
+  <div class="sec-grid">
+    <div class="sec-card">
+      <div class="sec-card-title"><div class="dot k"></div> CRYSTALS-Kyber768</div>
+      <div class="sec-sub">NIST PQC Round 4 winner — Lattice-based KEM</div>
+      <div class="sec-row"><span class="sec-prop">NIST Security Level</span><span class="sec-val k">Level 3 (≈ AES-192)</span></div>
+      <div class="sec-row"><span class="sec-prop">Mathematical Basis</span><span class="sec-val k">MLWE / Module LWE</span></div>
+      <div class="sec-row"><span class="sec-prop">Quantum Attack Cost</span><span class="sec-val g">2¹⁷⁸ ops</span></div>
+      <div class="sec-row"><span class="sec-prop">Classical Attack Cost</span><span class="sec-val g">&gt; 2¹⁷⁸ ops</span></div>
+      <div class="sec-row"><span class="sec-prop">Known Vulnerabilities</span><span class="sec-val g">None (NIST vetted)</span></div>
+      <div class="sec-row"><span class="sec-prop">Public Key (theoretical)</span><span class="sec-val k">1,184 bytes</span></div>
+      <div class="sec-row"><span class="sec-prop">Ciphertext (theoretical)</span><span class="sec-val k">1,088 bytes</span></div>
+    </div>
+    <div class="sec-card">
+      <div class="sec-card-title"><div class="dot m"></div> Classic McEliece-6960119</div>
+      <div class="sec-sub">Code-based KEM — 50+ year security track record</div>
+      <div class="sec-row"><span class="sec-prop">NIST Security Level</span><span class="sec-val m">Level 5 (≈ AES-256)</span></div>
+      <div class="sec-row"><span class="sec-prop">Mathematical Basis</span><span class="sec-val m">Syndrome Decoding (NP-complete)</span></div>
+      <div class="sec-row"><span class="sec-prop">Quantum Attack Cost</span><span class="sec-val g">2²⁵⁶ ops</span></div>
+      <div class="sec-row"><span class="sec-prop">Classical Attack Cost</span><span class="sec-val g">&gt; 2²⁵⁶ ops</span></div>
+      <div class="sec-row"><span class="sec-prop">Known Vulnerabilities</span><span class="sec-val g">None (50yr history)</span></div>
+      <div class="sec-row"><span class="sec-prop">Public Key (theoretical)</span><span class="sec-val m">~1.04 MB</span></div>
+      <div class="sec-row"><span class="sec-prop">Ciphertext (theoretical)</span><span class="sec-val m">194 bytes</span></div>
+    </div>
+  </div>
+
+  <!-- INSIGHTS -->
+  <div class="card">
+    <div class="card-title">Key Insights &amp; Analysis</div>
+    <div class="insight-grid">
+      <div class="ic good"><div class="ic-title">Kyber768 Dominates on Speed</div><div class="ic-body">Kyber key generation is <strong id="ins-kg">~70,000×</strong> faster than McEliece. Sub-millisecond operations make it ideal for ephemeral key exchange in TLS-like protocols requiring a fresh keypair per session.</div></div>
+      <div class="ic warn"><div class="ic-title">McEliece Public Key Problem</div><div class="ic-body">McEliece's <strong id="ins-pk-mce">~1 MB</strong> public key is <strong id="ins-pk-ratio">~885×</strong> larger than Kyber's — impractical for IoT or mobile. However, its KEM ciphertext is <strong id="ins-ct">~6×</strong> smaller, an advantage once keys are distributed.</div></div>
+      <div class="ic info"><div class="ic-title">Both Are Equally Quantum-Resistant</div><div class="ic-body">McEliece offers NIST Level 5 (~2²⁵⁶), Kyber Level 3 (~2¹⁹²). Neither Module-LWE nor Syndrome Decoding has a known quantum speedup. Shor's and Grover's algorithms offer no advantage against either scheme.</div></div>
+      <div class="ic info"><div class="ic-title">Maturity &amp; Standardization</div><div class="ic-body">McEliece (1978, 46 years) has the longest cryptanalysis record. Kyber was standardized as FIPS 203 / ML-KEM in 2024, giving it the strongest regulatory backing. Both are NIST-endorsed for new deployments.</div></div>
+      <div class="ic good"><div class="ic-title">Key Length Justification</div><div class="ic-body"><strong>Kyber768:</strong> k=3 module rank achieves NIST Level 3 with balanced size/speed. <strong>McEliece-6960119:</strong> (n=6960, t=119) targets Level 5 — appropriate for highest-assurance, long-lived key scenarios.</div></div>
+      <div class="ic good"><div class="ic-title">Hybrid KEM + AES-256-GCM Design</div><div class="ic-body">Both schemes use KEM to derive a 32-byte shared secret, then HKDF-SHA256 to derive an AES-256 key. AES-256-GCM then provides confidentiality, 128-bit integrity tags, and replay protection via nonces + timestamp AAD.</div></div>
+      <div class="ic warn"><div class="ic-title">Practical Use Case Split</div><div class="ic-body"><strong>Kyber768:</strong> TLS, messaging, API auth, IoT, mobile — any latency-sensitive protocol. <strong>McEliece:</strong> Top-secret classified data, long-lived key pairs distributed once, ultra-conservative deployments.</div></div>
+      <div class="ic bad"><div class="ic-title">"Harvest Now, Decrypt Later" Threat</div><div class="ic-body">Nation-state adversaries collect today's RSA/ECDH-encrypted traffic to decrypt once a CRQC arrives. Data encrypted via Kyber/McEliece + AES-256-GCM today remains secure even after a CRQC exists.</div></div>
+    </div>
+  </div>
+
+  <!-- CONCLUSIONS -->
+  <div class="card">
+    <div class="card-title">Conclusions</div>
+    <div class="conc-list">
+      <div class="conc-item"><div class="conc-num">1</div><div>
+        <div class="c-title">Shor's Algorithm Breaks All of NSA Suite B</div>
+        <div class="c-body">A "very powerful" quantum computer — defined as ~4,096 logical qubits (~20 million physical qubits with surface-code error correction) — running Shor's algorithm breaks RSA-2048 and all elliptic-curve schemes in polynomial time O(n³). Current estimates place such a machine 10–20 years away. Both Kyber768 and Classic McEliece are immune because their hard problems (Module-LWE, Syndrome Decoding) have no known quantum polynomial algorithm.</div>
+      </div></div>
+      <div class="conc-item"><div class="conc-num">2</div><div>
+        <div class="c-title">Grover's Algorithm Halves Symmetric Security — AES-256 Survives</div>
+        <div class="c-body">Grover's quadratic speedup reduces AES-128 to 64-bit effective security (insufficient post-quantum). AES-256 retains 128-bit quantum security — the accepted safe threshold. Our implementation uses AES-256-GCM throughout, ensuring no vulnerability. The mitigation is simply doubling symmetric key sizes, as NSA recommends.</div>
+      </div></div>
+      <div class="conc-item"><div class="conc-num">3</div><div>
+        <div class="c-title">Kyber768 is the Practical Winner for Most Applications</div>
+        <div class="c-body">With <span id="conc-kg">~70,000×</span> faster key generation, <span id="conc-pk">885×</span> smaller public keys, and sub-millisecond total operation times, Kyber768 (FIPS 203 / ML-KEM, 2024) is the right choice for TLS replacement, encrypted messaging, and API security. Its NIST Level 3 security far exceeds any foreseeable classical threat.</div>
+      </div></div>
+      <div class="conc-item"><div class="conc-num">4</div><div>
+        <div class="c-title">McEliece is the Ultra-Secure Conservative Option</div>
+        <div class="c-body">Classic McEliece's 46-year cryptanalysis record and NIST Level 5 security make it the right choice for classified government systems, critical infrastructure, and long-term data archival. Its 194-byte ciphertext is the smallest among all NIST PQC finalists, making encapsulation/decapsulation efficient once the one-time key setup cost is amortized.</div>
+      </div></div>
+      <div class="conc-item"><div class="conc-num">5</div><div>
+        <div class="c-title">Hybrid KEM + AES-256-GCM Defeats All Three Required Attacks</div>
+        <div class="c-body">The secure communication scheme from class remains structurally valid — only the public-key component is replaced. <strong>Eavesdropping:</strong> defeated by Module-LWE / Syndrome Decoding hardness. <strong>Modification:</strong> detected by AES-256-GCM 128-bit auth tag — any bit flip causes verifiable failure. <strong>Replay:</strong> blocked by per-message nonce tracking and timestamp AAD validation. The combination provides comprehensive post-quantum security with negligible overhead.</div>
+      </div></div>
+    </div>
+  </div>
+
+</div><!-- /page -->
+
+<footer class="footer" id="footer">
+  <div><strong>PQC Dashboard</strong></div>
+  <div>All benchmark data fetched from real Python crypto backend via <code style="font-family:var(--mono);color:var(--cyan)">/api/benchmark/full</code></div>
+  <div class="backend-tag fallback" id="backendTag">backend unknown</div>
+</footer>
+
+<script>
+const API_BASE = 'http://localhost:5001/api';  // macOS default; change to :5000 if needed
+
+let timeChartInst = null;
+let sizeChartInst = null;
+
+/* ── helpers ─────────────────────────────────────────────────────── */
+function fmtBytes(b) {
+  if (b >= 1048576) return (b/1048576).toFixed(2) + ' MB';
+  if (b >= 1024)    return (b/1024).toFixed(1) + ' KB';
+  return b + ' B';
+}
+function fmtMs(ms) {
+  if (ms == null || isNaN(ms)) return '—';
+  if (ms < 0.01) return '< 0.01 ms';
+  if (ms < 1)    return ms.toFixed(3) + ' ms';
+  if (ms < 1000) return ms.toFixed(2) + ' ms';
+  return (ms/1000).toFixed(2) + ' s';
+}
+function progress(pct) {
+  document.getElementById('progressBar').style.width = pct + '%';
+}
+function setStatus(msg, type) {
+  const b = document.getElementById('statusBanner');
+  b.style.display = msg ? 'block' : 'none';
+  b.className = type || '';
+  b.innerHTML = msg || '';
+}
+
+/* ── API status check ──────────────────────────────────────────── */
+async function checkAPI() {
+  const dot = document.getElementById('apiDot');
+  const txt = document.getElementById('apiTxt');
+  try {
+    const r = await fetch(API_BASE + '/status');
+    const d = await r.json();
+    dot.className = 'api-dot ok';
+    txt.textContent = d.oqs_available ? 'liboqs connected' : 'x25519 fallback';
+    txt.style.color = d.oqs_available ? 'var(--green)' : 'var(--yellow)';
+    if (!d.oqs_available) {
+      setStatus(
+        '⚠ liboqs not installed — backend uses X25519 ECDH (real crypto, not post-quantum). Install liboqs-python for Kyber/McEliece.',
+        'warn'
+      );
+    } else {
+      setStatus('✓ Connected to PQC backend — liboqs ' + (d.oqs_version || '') + ' — ready to benchmark.', 'info');
+      setTimeout(() => setStatus('', ''), 4000);
+    }
+  } catch(e) {
+    dot.className = 'api-dot err';
+    txt.textContent = 'API offline';
+    txt.style.color = 'var(--red)';
+    setStatus('✗ Cannot reach API at ' + API_BASE + ' — start the Flask server: <code>python app.py</code>', 'err');
+  }
+}
+
+/* ── main benchmark ─────────────────────────────────────────────── */
+async function runBenchmark() {
+  const btn = document.getElementById('runBtn');
+  const pw  = document.getElementById('progressWrap');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loading-spinner"></span>Running…';
+  pw.style.display = 'block';
+  progress(5);
+  setStatus('', '');
+
+  const ki = Math.min(50, Math.max(1, parseInt(document.getElementById('kyberIter').value) || 20));
+  const mi = Math.min(20, Math.max(1, parseInt(document.getElementById('mceIter').value) || 5));
+
+  progress(15);
+  try {
+    const resp = await fetch(API_BASE + '/benchmark/full', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({kyber_iterations: ki, mce_iterations: mi})
+    });
+    progress(80);
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+    progress(100);
+    setTimeout(() => { pw.style.display='none'; progress(0); }, 600);
+    render(data);
+  } catch(e) {
+    pw.style.display = 'none';
+    progress(0);
+    setStatus('✗ Benchmark failed: ' + e.message, 'err');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '▶ Run Benchmark';
+  }
+}
+
+/* ── render all sections ─────────────────────────────────────────── */
+function render(data) {
+  const k = data.schemes.kyber;
+  const m = data.schemes.mceliece;
+  const backend = data.oqs ? 'liboqs' : 'x25519-fallback';
+
+  // backend tag
+  const bt = document.getElementById('backendTag');
+  if (data.oqs) {
+    bt.textContent = '✓ liboqs';
+    bt.className = 'backend-tag real';
+  } else {
+    bt.textContent = '⚠ x25519 fallback';
+    bt.className = 'backend-tag fallback';
+  }
+
+  if (data.oqs || k._note) {
+    const note = k._note ? (' Note: ' + k._note) : '';
+    setStatus('✓ Benchmark complete — ' + k.iterations + ' Kyber iters, ' + m.iterations + ' McEliece iters. Timestamp: ' + data.timestamp + note, 'info');
+    setTimeout(() => setStatus('', ''), 6000);
+  }
+
+  document.getElementById('realBadge').style.display = 'inline-flex';
+
+  // tiles
+  const kp = k.performance, mp = m.performance;
+  document.getElementById('t-kyber-total').textContent = fmtMs(kp.total_avg_ms);
+  document.getElementById('t-mce-total').textContent   = fmtMs(mp.total_avg_ms);
+  document.getElementById('t-kyber-pk').textContent    = fmtBytes(k.sizes.public_key);
+  const ratio = mp.total_avg_ms / kp.total_avg_ms;
+  document.getElementById('t-speed-ratio').textContent = isFinite(ratio) ? ratio.toFixed(1) + '×' : '—';
+
+  renderCharts(k, m);
+  renderSizeBars(k, m);
+  renderPerfTable(k, m);
+}
+
+/* ── charts ──────────────────────────────────────────────────────── */
+function renderCharts(k, m) {
+  const kp = k.performance, mp = m.performance;
+
+  // destroy old
+  if (timeChartInst) { timeChartInst.destroy(); timeChartInst = null; }
+  if (sizeChartInst) { sizeChartInst.destroy(); sizeChartInst = null; }
+
+  // Shared base for x axis
+  const baseX = { ticks: { color: '#8888b8' }, grid: { color: 'rgba(255,255,255,.05)' } };
+
+  // Logarithmic Y axis for time chart (makes tiny Kyber bars visible beside huge McEliece keygen)
+  const logTimeY = {
+    type: 'logarithmic',
+    title: { display: true, text: 'Time (ms) — log scale', color: '#6666a0', font: { size: 11 } },
+    grid: { color: 'rgba(255,255,255,.05)' },
+    ticks: {
+      color: '#8888b8',
+      callback: function(value) {
+        const nice = [0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000];
+        if (nice.some(n => Math.abs(value - n) / n < 0.01)) {
+          return value < 1 ? value.toFixed(value < 0.01 ? 3 : value < 0.1 ? 2 : 1) + ' ms'
+                           : value >= 1000 ? (value/1000).toFixed(1) + ' s'
+                           : value.toFixed(0) + ' ms';
+        }
+        return null;
+      }
+    }
+  };
+
+  // Logarithmic Y axis for size chart
+  const logSizeY = {
+    type: 'logarithmic',
+    title: { display: true, text: 'Size (bytes) — log scale', color: '#6666a0', font: { size: 11 } },
+    grid: { color: 'rgba(255,255,255,.05)' },
+    ticks: {
+      color: '#8888b8',
+      callback: function(value) {
+        const nice = [32, 64, 128, 194, 256, 512, 1024, 1088, 1184, 2048, 2400, 4096, 8192, 13948, 16384, 65536, 131072, 262144, 524288, 1047319, 1048576];
+        if (nice.some(n => Math.abs(value - n) / n < 0.01)) {
+          if (value >= 1048576) return (value/1048576).toFixed(2) + ' MB';
+          if (value >= 1024)    return (value/1024).toFixed(0) + ' KB';
+          return value + ' B';
+        }
+        return null;
+      }
+    }
+  };
+
+  timeChartInst = new Chart(document.getElementById('timeChart'), {
+    type: 'bar',
+    data: {
+      labels: ['Keygen', 'Encap', 'Decap', 'Total'],
+      datasets: [
+        {
+          label: 'Kyber768',
+          data: [kp.keygen_avg_ms, kp.encap_avg_ms, kp.decap_avg_ms, kp.total_avg_ms],
+          backgroundColor: 'rgba(59,130,246,.65)',
+          borderColor: '#3b82f6',
+          borderWidth: 1.5
+        },
+        {
+          label: 'McEliece',
+          data: [mp.keygen_avg_ms, mp.encap_avg_ms, mp.decap_avg_ms, mp.total_avg_ms],
+          backgroundColor: 'rgba(34,176,198,.65)',
+          borderColor: '#22b0c6',
+          borderWidth: 1.5
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: '#8888b8', font: { size: 12 } } },
+        tooltip: { callbacks: { label: ctx => ' ' + ctx.dataset.label + ': ' + (ctx.raw < 1 ? ctx.raw.toFixed(4) : ctx.raw.toFixed(2)) + ' ms' } }
+      },
+      scales: { x: baseX, y: logTimeY }
+    }
+  });
+
+  sizeChartInst = new Chart(document.getElementById('sizeChart'), {
+    type: 'bar',
+    data: {
+      labels: ['Public Key', 'Secret Key', 'Ciphertext'],
+      datasets: [
+        {
+          label: 'Kyber768',
+          data: [k.sizes.public_key, k.sizes.secret_key, k.sizes.ciphertext],
+          backgroundColor: 'rgba(59,130,246,.65)',
+          borderColor: '#3b82f6',
+          borderWidth: 1.5
+        },
+        {
+          label: 'McEliece',
+          data: [m.sizes.public_key, m.sizes.secret_key, m.sizes.ciphertext],
+          backgroundColor: 'rgba(34,176,198,.65)',
+          borderColor: '#22b0c6',
+          borderWidth: 1.5
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: '#8888b8', font: { size: 12 } } },
+        tooltip: { callbacks: { label: ctx => {
+          const v = ctx.raw;
+          const fmt = v >= 1048576 ? (v/1048576).toFixed(2)+' MB' : v >= 1024 ? (v/1024).toFixed(1)+' KB' : v+' B';
+          return ' ' + ctx.dataset.label + ': ' + fmt;
+        }}}
+      },
+      scales: { x: baseX, y: logSizeY }
+    }
+  });
+}
+
+/* ── size bars ──────────────────────────────────────────────────── */
+function renderSizeBars(k, m) {
+  const rows = [
+    { label: 'Public Key',    ks: k.sizes.public_key,    ms: m.sizes.public_key },
+    { label: 'Secret Key',    ks: k.sizes.secret_key,    ms: m.sizes.secret_key },
+    { label: 'Ciphertext',    ks: k.sizes.ciphertext,    ms: m.sizes.ciphertext },
+    { label: 'Shared Secret', ks: k.sizes.shared_secret, ms: m.sizes.shared_secret },
+  ];
+  const maxVal = Math.max(...rows.map(r => Math.max(r.ks, r.ms)));
+
+  let html = `<table class="size-table">
+    <thead><tr>
+      <th>Field</th>
+      <th style="color:var(--kyber)">Kyber768</th>
+      <th style="color:var(--mce)">McEliece</th>
+    </tr></thead><tbody>`;
+
+  for (const r of rows) {
+    const kpct = maxVal ? (r.ks / maxVal * 100) : 0;
+    const mpct = maxVal ? (r.ms / maxVal * 100) : 0;
+    html += `<tr>
+      <td><span class="sz-lbl">${r.label}</span></td>
+      <td>
+        <div class="sz-bar-wrap">
+          <div class="sz-bar-bg"><div class="sz-bar k" style="width:${kpct}%"></div></div>
+          <span class="sz-num k">${fmtBytes(r.ks)}</span>
+        </div>
+      </td>
+      <td>
+        <div class="sz-bar-wrap">
+          <div class="sz-bar-bg"><div class="sz-bar m" style="width:${mpct}%"></div></div>
+          <span class="sz-num m">${fmtBytes(r.ms)}</span>
+        </div>
+      </td>
+    </tr>`;
+  }
+  html += '</tbody></table>';
+  document.getElementById('sizeBarArea').innerHTML = html;
+}
+
+/* ── perf table ─────────────────────────────────────────────────── */
+function renderPerfTable(k, m) {
+  const kp = k.performance, mp = m.performance;
+  const rows = [
+    { op: 'Key Generation',  kv: kp.keygen_avg_ms, kmin: kp.keygen_min_ms, kmax: kp.keygen_max_ms,
+                              mv: mp.keygen_avg_ms, mmin: mp.keygen_min_ms, mmax: mp.keygen_max_ms },
+    { op: 'Encapsulation',   kv: kp.encap_avg_ms,  kmin: kp.encap_min_ms,  kmax: kp.encap_max_ms,
+                              mv: mp.encap_avg_ms,  mmin: mp.encap_min_ms,  mmax: mp.encap_max_ms },
+    { op: 'Decapsulation',   kv: kp.decap_avg_ms,  kmin: kp.decap_min_ms,  kmax: kp.decap_max_ms,
+                              mv: mp.decap_avg_ms,  mmin: mp.decap_min_ms,  mmax: mp.decap_max_ms },
+    { op: 'Total (avg)',      kv: kp.total_avg_ms,  kmin: null, kmax: null,
+                              mv: mp.total_avg_ms,  mmin: null, mmax: null },
+  ];
+
+  let html = `<table class="perf-table">
+    <thead><tr>
+      <th>Operation</th>
+      <th style="color:var(--kyber)">Kyber768 avg</th>
+      <th style="color:var(--kyber);opacity:.6">min / max</th>
+      <th style="color:var(--mce)">McEliece avg</th>
+      <th style="color:var(--mce);opacity:.6">min / max</th>
+      <th>Ratio (MCE/K)</th>
+    </tr></thead><tbody>`;
+
+  for (const r of rows) {
+    const ratio = r.kv ? (r.mv / r.kv).toFixed(1) + '×' : '—';
+    const kminmax = r.kmin != null ? `<span style="color:var(--dim);font-size:12px">${fmtMs(r.kmin)} / ${fmtMs(r.kmax)}</span>` : '—';
+    const mminmax = r.mmin != null ? `<span style="color:var(--dim);font-size:12px">${fmtMs(r.mmin)} / ${fmtMs(r.mmax)}</span>` : '—';
+    html += `<tr>
+      <td>${r.op}</td>
+      <td><span class="k-num">${fmtMs(r.kv)}</span></td>
+      <td>${kminmax}</td>
+      <td><span class="m-num">${fmtMs(r.mv)}</span></td>
+      <td>${mminmax}</td>
+      <td><span class="ratio">${ratio}</span></td>
+    </tr>`;
+  }
+  html += `</tbody></table>
+    <div style="margin-top:12px;font-size:12px;color:var(--dim)">
+      Iterations: Kyber=${k.iterations}, McEliece=${m.iterations} — All timings from real Python crypto via liboqs / X25519.
+    </div>`;
+  document.getElementById('perfTableArea').innerHTML = html;
+}
+
+/* ── init ────────────────────────────────────────────────────────── */
+checkAPI();
+</script>
+</body>
+</html>

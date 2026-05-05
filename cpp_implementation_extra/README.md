@@ -1,7 +1,7 @@
 # C++ Extra Credit — PQC Core Implementation
 
 This directory contains a standalone C++ implementation of the quantum-resistant
-hybrid encryption scheme for the extra-credit requirement of CS6903/4783 Project 3.5.
+hybrid encryption scheme for the extra-credit requirement of Project 3.5.
 
 ## What It Does
 

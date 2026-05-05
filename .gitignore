@@ -1,12 +1,15 @@
-# Python
+# ── Python ────────────────────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
+MANIFEST
+
+# ── Build / Distribution ──────────────────────────────────────────────────────
 build/
-develop-eggs/
 dist/
+develop-eggs/
 downloads/
 eggs/
 .eggs/
@@ -17,42 +20,49 @@ sdist/
 var/
 wheels/
 *.egg-info/
-.installed.cfg
 *.egg
-MANIFEST
 
-# Virtual Environment
+# ── Virtual Environments ──────────────────────────────────────────────────────
 venv/
 env/
 ENV/
-.venv
+.venv/
+.env
 
-# IDE
+# ── IDEs ──────────────────────────────────────────────────────────────────────
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
-.DS_Store
 
-# Testing
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Testing / Coverage ────────────────────────────────────────────────────────
 .pytest_cache/
 .coverage
 htmlcov/
 .tox/
+test_outputs/
 
-# Project specific
+# ── C++ Build Artifacts ───────────────────────────────────────────────────────
+cpp_implementation_extra/pqc_core
+cpp_implementation_extra/*.o
+cpp_implementation_extra/*.out
+
+# ── Project-Specific ──────────────────────────────────────────────────────────
 benchmark_results.json
 *.key
 *.pem
-test_outputs/
 *.log
+session_store.json
 
-# OS
-Thumbs.db
-.DS_Store
-
-DEPLOYMENT.md
-IMPROVEMENTS.md
-PRESENTATION.md
-QUICKSTART.md
+# ── Secrets / Keys (never commit) ─────────────────────────────────────────────
+*.pem
+*.key
+*.p12
+*.pfx
+secret_*
+private_*

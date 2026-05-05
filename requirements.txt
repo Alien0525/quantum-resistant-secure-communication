@@ -1,21 +1,27 @@
-# Core cryptography libraries
-liboqs-python>=0.14.1
+# ── Quantum-Resistant Cryptography (core) ────────────────────────────────────
+# liboqs-python: Python bindings for Open Quantum Safe C library
+# Provides: Kyber768, Classic-McEliece-6960119 KEM algorithms
+liboqs-python>=0.10.0
+
+# PyCryptodome: AES-256-GCM, HKDF-SHA256 (used by secure_channel.py)
 pycryptodome>=3.18.0
+
+# cryptography: X25519 ECDH, HKDF, AESGCM (used by app.py fallback layer)
 cryptography>=41.0.0
 
-# Testing
+# ── Web Backend ───────────────────────────────────────────────────────────────
+# Flask: HTTP API server (app.py)
+Flask>=2.3.0
+
+# ── Testing ───────────────────────────────────────────────────────────────────
 pytest>=7.4.0
 pytest-cov>=4.1.0
 
-# Performance profiling
-memory-profiler>=0.61.0
-
-# Data visualization
-matplotlib>=3.7.0
-numpy>=1.24.0
-
-# Terminal formatting
+# ── Terminal Utilities ────────────────────────────────────────────────────────
 colorama>=0.4.6
-
-# Utilities
 tabulate>=0.9.0
+
+# ── Optional: live benchmark script (analysis/live_benchmark.py) ─────────────
+# These are only needed if you run live_benchmark.py directly, not for app.py
+# matplotlib>=3.7.0
+# numpy>=1.24.0
