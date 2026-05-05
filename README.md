@@ -1,9 +1,13 @@
 # PQCSecureChat
 
 Quantum-resistant two-party secure communication.  
-**Zero fake implementations** — all cryptographic operations are real.
 
 ---
+
+## Demo Video
+
+Full walkthrough of architecture, live secure chat, attack simulations, and performance benchmarks:  
+[▶️ Watch Demo](YOUR_VIDEO_LINK_HERE)
 
 ## Project Requirements Coverage
 
@@ -32,6 +36,9 @@ cpp_implementation_extra/
   pqc_core.cpp          C++ implementation (extra credit)
   Makefile              Auto-detects macOS / Linux
   README.md             C++ build instructions
+  test_results_screenshots/
+    kyber_cpp.png       Execution results for Kyber
+    mceliece_cpp.png    Execution results for McEliece
 ```
 
 ---
@@ -119,6 +126,16 @@ make
 ./pqc_core mceliece "Transfer $1000 to Account #12345"
 ./pqc_core both     "Transfer $1000 to Account #12345"
 ```
+
+## Test Results (C++ Implementation)
+
+Screenshots demonstrating successful execution of both PQC schemes in the C++ implementation:
+
+### Kyber768
+![Kyber C++ Result](cpp_implementation_extra/test_results_screenshots/kyber_cpp.png)
+
+### Classic McEliece
+![McEliece C++ Result](cpp_implementation_extra/test_results_screenshots/mceliece_cpp.png)
 
 The C++ implementation uses:
 - liboqs C API (OQS_KEM_keypair, OQS_KEM_encaps, OQS_KEM_decaps)

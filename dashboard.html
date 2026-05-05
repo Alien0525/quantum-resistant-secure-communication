@@ -824,7 +824,7 @@ function renderPerfTable(k, m) {
   }
   html += `</tbody></table>
     <div style="margin-top:12px;font-size:12px;color:var(--dim)">
-      Iterations: Kyber=${k.iterations}, McEliece=${m.iterations} — All timings from real Python crypto via liboqs / X25519.
+      Iterations: Kyber=${k.iterations}, McEliece=${m.iterations} — All timings from real Python crypto via liboqs.
     </div>`;
   document.getElementById('perfTableArea').innerHTML = html;
 }
