@@ -108,6 +108,57 @@ open dashboard.html
 
 ---
 
+## Screenshots
+
+### Live Chat Demonstrations
+
+![Kyber768 Key Exchange](screenshots/chat_demo_kyber_key_exchange.png)
+*Alice and Bob completing Kyber768 key exchange — sub-millisecond performance with 1.16 KB public key*
+
+![Message Decryption](screenshots/chat_demo_kyber_message_decrypt.png)
+*Bob decrypting Alice's encrypted message — AES-256-GCM verified in 0.096 ms*
+
+![Live Conversation](screenshots/chat_demo_kyber_conversation.png)
+*Real-time encrypted chat using Kyber768 + AES-256-GCM hybrid encryption*
+
+![McEliece Key Exchange](screenshots/chat_demo_mceliece_exchange.png)
+*Classic McEliece-6960119 key exchange — NIST Level 5 security with 1022.77 KB public key*
+
+### Cryptographic Analysis
+
+![Crypto Inspector - Kyber768](screenshots/crypto_inspector_kyber.png)
+*Kyber768 algorithm parameters — Module-LWE lattice-based KEM with NIST Level 3 security*
+
+![Crypto Inspector - Symmetric Layer](screenshots/crypto_inspector_symmetric_layer.png)
+*AES-256-GCM encryption details showing nonce, auth tag, and ciphertext for the last message*
+
+### Attack Defense Simulations
+
+![Quantum Threat Analysis](screenshots/attack_defense_quantum_threats.png)
+*Grover's Algorithm simulation — demonstrates quantum resistance of both PQC schemes*
+
+![Eavesdropping Attack](screenshots/attack_defense_eavesdropping.png)
+*Passive capture attack simulation — shows McEliece immunity to traffic interception*
+
+### Performance Benchmarks
+
+![Backend API Status](screenshots/backend_api_status.png)
+*Backend API health check — liboqs 0.15.0 with Kyber768 and Classic McEliece available*
+
+![Benchmark Overview](screenshots/dashboard_benchmark_overview.png)
+*Performance comparison dashboard — Kyber768 ~15,926× faster with 885× smaller public keys*
+
+![Detailed Performance Table](screenshots/dashboard_performance_table.png)
+*Operation timing breakdown — keygen, encapsulation, and decapsulation metrics for both schemes*
+
+![Key Insights](screenshots/dashboard_key_insights.png)
+*Security analysis — practical use cases and quantum resistance properties*
+
+![Conclusions](screenshots/dashboard_conclusions.png)
+*Research conclusions — Shor's algorithm threat mitigation via hybrid KEM + AES-256-GCM*
+
+---
+
 ## C++ Extra Credit
 
 ```bash
