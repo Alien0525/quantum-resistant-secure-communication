@@ -7,7 +7,7 @@ Quantum-resistant two-party secure communication.
 ## Demo Video
 
 Full walkthrough of architecture, live secure chat, attack simulations, and performance benchmarks:  
-[▶️ Watch Demo](YOUR_VIDEO_LINK_HERE)
+[▶️ Watch Demo](https://youtu.be/SMy-1UOECs8)
 
 ## Project Requirements Coverage
 
